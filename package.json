@@ -1,7 +1,7 @@
 {
   "name": "@tintinweb/pi-subagents",
   "version": "0.2.5",
-  "description": "A pi extension providing autonomous sub-agents with Claude Code-style UI",
+  "description": "A pi extension extension that brings Claude Code-style autonomous sub-agents to pi.",
   "author": "tintinweb",
   "license": "MIT",
   "repository": {
