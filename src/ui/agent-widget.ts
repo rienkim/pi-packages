@@ -5,6 +5,7 @@
  * Uses the callback form of setWidget for themed rendering.
  */
 
+import { truncateToWidth } from "@mariozechner/pi-tui";
 import type { AgentManager } from "../agent-manager.js";
 import type { SubagentType } from "../types.js";
 import { getConfig } from "../agent-types.js";
@@ -262,17 +263,19 @@ export class AgentWidget {
     this.widgetFrame++;
     const frame = SPINNER[this.widgetFrame % SPINNER.length];
 
-    this.uiCtx.setWidget("agents", (_tui, theme) => {
+    this.uiCtx.setWidget("agents", (tui, theme) => {
+      const w = tui.terminal.columns;
+      const truncate = (line: string) => truncateToWidth(line, w);
       const headingColor = hasActive ? "accent" : "dim";
       const headingIcon = hasActive ? "●" : "○";
-      const lines: string[] = [theme.fg(headingColor, headingIcon) + " " + theme.fg(headingColor, "Agents")];
+      const lines: string[] = [truncate(theme.fg(headingColor, headingIcon) + " " + theme.fg(headingColor, "Agents"))];
 
       // --- Finished agents (shown first, dimmed) ---
       for (let i = 0; i < finished.length; i++) {
         const a = finished[i];
         const isLast = !hasActive && i === finished.length - 1;
         const connector = isLast ? "└─" : "├─";
-        lines.push(theme.fg("dim", connector) + " " + this.renderFinishedLine(a, theme));
+        lines.push(truncate(theme.fg("dim", connector) + " " + this.renderFinishedLine(a, theme)));
       }
 
       // --- Running agents ---
@@ -299,14 +302,14 @@ export class AgentWidget {
 
         const activity = bg ? describeActivity(bg.activeTools, bg.responseText) : "thinking…";
 
-        lines.push(theme.fg("dim", connector) + ` ${theme.fg("accent", frame)} ${theme.bold(name)}  ${theme.fg("muted", a.description)} ${theme.fg("dim", "·")} ${theme.fg("dim", statsText)}`);
+        lines.push(truncate(theme.fg("dim", connector) + ` ${theme.fg("accent", frame)} ${theme.bold(name)}  ${theme.fg("muted", a.description)} ${theme.fg("dim", "·")} ${theme.fg("dim", statsText)}`));
         const indent = isLast ? "   " : "│  ";
-        lines.push(theme.fg("dim", indent) + theme.fg("dim", `  ⎿  ${activity}`));
+        lines.push(truncate(theme.fg("dim", indent) + theme.fg("dim", `  ⎿  ${activity}`)));
       }
 
       // --- Queued agents (collapsed) ---
       if (queued.length > 0) {
-        lines.push(theme.fg("dim", "└─") + ` ${theme.fg("muted", "◦")} ${theme.fg("dim", `${queued.length} queued`)}`);
+        lines.push(truncate(theme.fg("dim", "└─") + ` ${theme.fg("muted", "◦")} ${theme.fg("dim", `${queued.length} queued`)}`));
       }
 
       return { render: () => lines, invalidate: () => {} };
