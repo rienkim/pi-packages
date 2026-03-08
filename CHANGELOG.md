@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.7] - 2026-03-08
+
+### Fixed
+- **Widget crash in narrow terminals** — agent widget lines were not truncated to terminal width, causing `doRender` to throw when the tmux pane was narrower than the rendered content. All widget lines are now truncated using `truncateToWidth()` with the actual terminal column count.
+
 ## [0.2.6] - 2026-03-07
 
 ### Added
@@ -125,6 +130,7 @@ Initial release.
 - **Thinking level** — per-agent extended thinking control
 - **`/agent` and `/agents` commands**
 
+[0.2.7]: https://github.com/tintinweb/pi-subagents/compare/v0.2.6...v0.2.7
 [0.2.6]: https://github.com/tintinweb/pi-subagents/compare/v0.2.5...v0.2.6
 [0.2.5]: https://github.com/tintinweb/pi-subagents/compare/v0.2.4...v0.2.5
 [0.2.4]: https://github.com/tintinweb/pi-subagents/compare/v0.2.3...v0.2.4
