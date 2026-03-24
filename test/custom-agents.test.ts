@@ -7,12 +7,17 @@ import { loadCustomAgents } from "../src/custom-agents.js";
 
 describe("loadCustomAgents", () => {
   let tmpDir: string;
+  let originalHome: string | undefined;
 
   beforeEach(() => {
     tmpDir = mkdtempSync(join(tmpdir(), "pi-test-"));
+    originalHome = process.env.HOME;
+    process.env.HOME = tmpDir;
   });
 
   afterEach(() => {
+    if (originalHome == null) delete process.env.HOME;
+    else process.env.HOME = originalHome;
     rmSync(tmpDir, { recursive: true, force: true });
   });
 
@@ -77,9 +82,9 @@ Just a prompt.`);
     expect(agent.thinking).toBeUndefined();
     expect(agent.maxTurns).toBeUndefined();
     expect(agent.promptMode).toBe("replace");
-    expect(agent.inheritContext).toBe(false);
-    expect(agent.runInBackground).toBe(false);
-    expect(agent.isolated).toBe(false);
+    expect(agent.inheritContext).toBeUndefined();
+    expect(agent.runInBackground).toBeUndefined();
+    expect(agent.isolated).toBeUndefined();
     expect(agent.systemPrompt).toBe("Just a prompt.");
   });
 
@@ -158,15 +163,15 @@ Any thinking.`);
     expect(result.get("anythink")!.thinking).toBe("turbo");
   });
 
-  it("rejects max_turns < 1", () => {
-    writeAgent("badturns", `---
+  it("accepts max_turns: 0 as unlimited", () => {
+    writeAgent("unlimited", `---
 max_turns: 0
 ---
 
-Bad turns.`);
+Unlimited turns.`);
 
     const result = loadCustomAgents(tmpDir);
-    expect(result.get("badturns")!.maxTurns).toBeUndefined();
+    expect(result.get("unlimited")!.maxTurns).toBe(0);
   });
 
   it("rejects negative max_turns", () => {
