@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.0.1](https://github.com/gotgenes/pi-autoformat/compare/v4.0.0...v4.0.1) (2026-05-06)
+
+
+### Documentation
+
+* add logo to README ([8044f45](https://github.com/gotgenes/pi-autoformat/commit/8044f45b3a37b8684ea5d187afc67b0eaa27947f))
+
 ## [4.0.0](https://github.com/gotgenes/pi-autoformat/compare/v3.0.1...v4.0.0) (2026-05-03)
 
 
