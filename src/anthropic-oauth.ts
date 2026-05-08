@@ -1,11 +1,11 @@
 import type {
   OAuthCredentials,
   OAuthLoginCallbacks,
-} from "@mariozechner/pi-ai";
+} from "@earendil-works/pi-ai";
 import {
   loginAnthropic,
   refreshAnthropicToken,
-} from "@mariozechner/pi-ai/oauth";
+} from "@earendil-works/pi-ai/oauth";
 
 export function mergeRefreshedCredentials(
   credentials: OAuthCredentials,

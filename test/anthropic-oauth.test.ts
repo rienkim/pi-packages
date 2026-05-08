@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { loginAnthropic } from "@mariozechner/pi-ai/oauth";
+import { loginAnthropic } from "@earendil-works/pi-ai/oauth";
 import { onTestFinished, test } from "vitest";
 
 import { mergeRefreshedCredentials } from "../src/anthropic-oauth.js";

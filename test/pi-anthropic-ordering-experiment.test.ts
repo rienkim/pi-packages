@@ -4,7 +4,7 @@ import {
   getModel,
   streamSimple,
   Type,
-} from "@mariozechner/pi-ai";
+} from "@earendil-works/pi-ai";
 import { test } from "vitest";
 
 import { shapeAnthropicOAuthPayload } from "../src/request-shaping.js";

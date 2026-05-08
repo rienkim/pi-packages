@@ -33,7 +33,7 @@ That means preserving:
 The current implementation does the following:
 
 1. Re-registers the built-in `anthropic` provider with an `oauth` override only
-2. Reuses Pi's native Anthropic login flow from `@mariozechner/pi-ai/oauth`
+2. Reuses Pi's native Anthropic login flow from `@earendil-works/pi-ai/oauth`
 3. Hardens refresh behavior so missing rotated refresh tokens fall back to the previous refresh token
 4. Uses `before_provider_request` to shape only built-in Anthropic OAuth payloads
 5. Prepends an Anthropic billing/content-consistency header block to `system[]`
@@ -106,11 +106,11 @@ Current skills:
 
 This repo depends on:
 
-1. `@mariozechner/pi-coding-agent`
-2. `@mariozechner/pi-ai`
+1. `@earendil-works/pi-coding-agent`
+2. `@earendil-works/pi-ai`
 3. `@anthropic-ai/sdk`
 
-When possible, import Pi behavior from `@mariozechner/pi-ai/oauth` rather than copying code from upstream.
+When possible, import Pi behavior from `@earendil-works/pi-ai/oauth` rather than copying code from upstream.
 
 ## Upstream Findings
 
@@ -355,7 +355,7 @@ Do that only if hooks are insufficient for the concrete compatibility issue bein
 
 ### Model ID Alias Drift
 
-Pi CLI model aliases and the locally installed `@mariozechner/pi-ai` package do not always accept the exact same Anthropic Haiku spelling.
+Pi CLI model aliases and the locally installed `@earendil-works/pi-ai` package do not always accept the exact same Anthropic Haiku spelling.
 In this repo, prefer the dashed form `anthropic/claude-haiku-4-5` in docs and repro commands, and `claude-haiku-4-5` in tests that call `getModel("anthropic", ...)` directly.
 
 ## Related Files

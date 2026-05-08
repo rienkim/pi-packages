@@ -66,7 +66,7 @@ The current evidence still supports staying hook-based unless a transport-level 
 
 #### 2. OAuth implementation depth
 
-This repo reuses Pi's native Anthropic OAuth helpers from `@mariozechner/pi-ai/oauth` and only hardens the refresh path by preserving the previous refresh token when Anthropic omits a rotated one.
+This repo reuses Pi's native Anthropic OAuth helpers from `@earendil-works/pi-ai/oauth` and only hardens the refresh path by preserving the previous refresh token when Anthropic omits a rotated one.
 
 `pi-anthropic-oauth` reimplements more of the OAuth flow itself, including:
 

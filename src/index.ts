@@ -1,4 +1,4 @@
-import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { anthropicOAuthOverride } from "./anthropic-oauth.js";
 import { shapeAnthropicOAuthPayload } from "./request-shaping.js";
 
