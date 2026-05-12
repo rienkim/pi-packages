@@ -83,3 +83,97 @@ When working in this repo:
 2. Do not introduce a third or fourth patch without first documenting the rationale in `docs/decisions/`.
 3. Upstream PRs to `tintinweb/pi-subagents` for Patches 2 and 3 are deferred pending production validation in RepOne — see `docs/decisions/0001-deferred-patches.md`.
 4. When syncing with upstream (rare), reapply the peer-dep rename and the two patches; the upstream `vitest` suite is the canary that nothing regressed.
+
+## Architecture
+
+### Module Dependency Graph
+
+```text
+index.ts ──wires──> agent-manager.ts ──calls──> agent-runner.ts
+    │                    │                       ├── prompts.ts
+    │                    ├── worktree.ts          ├── context.ts
+    │                    ├── usage.ts             ├── memory.ts
+    │                    └── schedule.ts          ├── skill-loader.ts
+    ├── tools (Agent,             │                  └── env.ts
+    │   get_subagent_result,      └── schedule-store.ts
+    │   steer_subagent)
+    ├── ui/
+    │   ├── agent-widget.ts
+    │   ├── conversation-viewer.ts
+    │   └── schedule-menu.ts
+    ├── agent-types.ts ──uses──> default-agents.ts, custom-agents.ts
+    ├── settings.ts
+    ├── cross-extension-rpc.ts
+    ├── group-join.ts
+    ├── model-resolver.ts
+    ├── invocation-config.ts
+    ├── types.ts
+    └── output-file.ts
+```
+
+### Module Descriptions
+
+#### Core engine
+
+| Module | Responsibility |
+| ------ | -------------- |
+| `index.ts` | Extension entry point. Registers tools (`Agent`, `get_subagent_result`, `steer_subagent`), the `/agents` command, lifecycle hooks, the agent widget, the scheduler, notification rendering, batch grouping, RPC handlers, and settings persistence. Wires everything together. |
+| `agent-manager.ts` | Manages agent lifecycle: spawn, resume, abort. Enforces a configurable concurrency limit (default 4) by queuing excess background agents. Emits lifecycle events (`started`, `completed`, `failed`, `compacted`). |
+| `agent-runner.ts` | Core execution engine. Creates agent sessions, assembles system prompts, binds extensions, applies active-tool filtering (Patch 2), injects `<active_agent>` tag (Patch 3), runs the agent loop, and collects results. |
+| `types.ts` | Shared type definitions: `AgentConfig`, `AgentRecord`, `SubagentType`, `JoinMode`, `MemoryScope`, `IsolationMode`, etc. |
+
+#### Agent configuration
+
+| Module | Responsibility |
+| ------ | -------------- |
+| `agent-types.ts` | Unified agent type registry. Merges embedded defaults with user-defined agents from `.pi/agents/*.md`. Resolves agent configs, tool lists, and type display names at runtime. |
+| `default-agents.ts` | Embedded default agent configurations (`general-purpose`, `Explore`, `Plan`) with tool sets, model defaults, and prompt modes. |
+| `custom-agents.ts` | Loads user-defined agent `.md` files from project (`.pi/agents/`) and global (`~/.pi/agent/agents/`) directories. Parses frontmatter for config overrides. |
+
+#### Prompt assembly
+
+| Module | Responsibility |
+| ------ | -------------- |
+| `prompts.ts` | Builds the system prompt for each agent from its config. Supports `replace` mode (full control) and `append` mode (clone parent identity + sub-agent context). |
+| `context.ts` | Extracts parent conversation history as text for `inherit_context` mode, giving subagents visibility into prior discussion. |
+| `memory.ts` | Manages persistent per-agent `MEMORY.md` files scoped to user, project, or local directories. Reads up to 200 lines for injection into agent prompts. |
+| `skill-loader.ts` | Preloads named skills from `.pi/skills`, `.agents/skills`, and global directories. Resolves both flat `.md` files and directory-based `SKILL.md` layouts. |
+| `env.ts` | Detects environment info (git repo, branch, platform) for injection into agent system prompts. |
+
+#### Execution support
+
+| Module | Responsibility |
+| ------ | -------------- |
+| `worktree.ts` | Git worktree isolation. Creates temporary worktrees so agents work on isolated repo copies. On completion, creates a branch if changes were made, or cleans up. |
+| `usage.ts` | Token usage tracking. Defines `LifetimeUsage` shape and provides accumulator operators and session-context-percent readers. Survives compaction. |
+| `model-resolver.ts` | Resolves model strings to model instances. Tries exact `provider/modelId` match first, then fuzzy match (e.g. `"haiku"`) against available models. |
+| `invocation-config.ts` | Merges per-call tool parameters with agent config defaults to produce the final invocation config (model, thinking, maxTurns, isolation, etc.). |
+| `output-file.ts` | Streaming JSONL output file for agent transcripts, matching Claude Code's task output file format. |
+
+#### Scheduling
+
+| Module | Responsibility |
+| ------ | -------------- |
+| `schedule.ts` | `SubagentScheduler`: timer-driven dispatcher for scheduled subagents. Supports cron, interval (`"5m"`), and one-shot (`"+10m"`, ISO) formats. Fires spawns that bypass the concurrency queue. |
+| `schedule-store.ts` | File-backed persistence for scheduled jobs. Session-scoped (one store per session ID), PID-locked for safe concurrent mutation, atomic writes via temp+rename. |
+
+#### Notifications & grouping
+
+| Module | Responsibility |
+| ------ | -------------- |
+| `group-join.ts` | Groups background agent completion notifications. When multiple agents finish within a window, sends a single consolidated notification instead of N individual nudges. |
+| `cross-extension-rpc.ts` | Cross-extension RPC handlers (`ping`, `spawn`, `stop`) over the `pi.events` event bus. Enables other extensions to discover and control subagents. |
+
+#### Settings
+
+| Module | Responsibility |
+| ------ | -------------- |
+| `settings.ts` | Persistence for operational settings (`maxConcurrent`, `defaultMaxTurns`, `graceTurns`, `defaultJoinMode`, `schedulingEnabled`). Merges global defaults (`~/.pi/agent/subagents.json`) with project overrides (`.pi/subagents.json`). |
+
+#### UI
+
+| Module | Responsibility |
+| ------ | -------------- |
+| `ui/agent-widget.ts` | Persistent widget displayed above the editor showing running/completed agents with animated spinners, live stats, and activity descriptions. |
+| `ui/conversation-viewer.ts` | Live conversation overlay for viewing an agent's full session. Scrollable, real-time streaming, with token/context stats. |
+| `ui/schedule-menu.ts` | `/agents → Scheduled jobs` submenu. Lists scheduled jobs, shows details, and supports cancellation. |
