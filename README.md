@@ -1,10 +1,14 @@
-# @tintinweb/pi-subagents
+# @gotgenes/pi-subagents
 
 A [pi](https://pi.dev) extension that brings **Claude Code-style autonomous sub-agents** to pi. Spawn specialized agents that run in isolated sessions — each with its own tools, system prompt, model, and thinking level. Run them in foreground or background, steer them mid-run, resume completed sessions, and define your own custom agent types.
 
+> **Fork notice:** This package is a friendly fork of [`tintinweb/pi-subagents`](https://github.com/tintinweb/pi-subagents), published to npm as `@gotgenes/pi-subagents`.
+> It carries a small number of patches on top of upstream — peer-dep migration to `@earendil-works/pi-*`, a post-`bindExtensions` active-tool re-filter, and an `<active_agent>` system-prompt tag for permission resolution.
+> See [Deviations from upstream](#deviations-from-upstream) at the bottom of this README for details.
+
 > **Status:** Early release.
 
-<img width="600" alt="pi-subagents screenshot" src="https://github.com/tintinweb/pi-subagents/raw/master/media/screenshot.png" />
+<img width="600" alt="pi-subagents screenshot" src="https://github.com/gotgenes/pi-subagents/raw/main/media/screenshot.png" />
 
 
 https://github.com/user-attachments/assets/8685261b-9338-4fea-8dfe-1c590d5df543
@@ -35,7 +39,7 @@ https://github.com/user-attachments/assets/8685261b-9338-4fea-8dfe-1c590d5df543
 ## Install
 
 ```bash
-pi install npm:@tintinweb/pi-subagents
+pi install npm:@gotgenes/pi-subagents
 ```
 
 Or load directly for development:
@@ -523,6 +527,16 @@ src/
     conversation-viewer.ts # Live conversation overlay for viewing agent sessions
 ```
 
+## Deviations from upstream
+
+This fork carries three divergences from [`tintinweb/pi-subagents`](https://github.com/tintinweb/pi-subagents). Each has a corresponding upstream PR:
+
+1. **Peer-dep migration to `@earendil-works/pi-*`** — `peerDependencies` and all imports point at `@earendil-works/pi-ai`, `@earendil-works/pi-coding-agent`, and `@earendil-works/pi-tui` (the active scope on npm) instead of the deprecated `@mariozechner/pi-*` scope. Also fixes a latent bug where `ThinkingLevel` was imported from `pi-agent-core` (an undeclared transitive dep that breaks under pnpm). Upstream PR: [tintinweb/pi-subagents#71](https://github.com/tintinweb/pi-subagents/pull/71).
+2. **Post-`bindExtensions` active-tool re-filter** (`src/agent-runner.ts`) — `runAgent` re-runs its active-tool filter after `session.bindExtensions(...)` so extension-registered tools join the child's active tool set. Without this, the `extensions: string[]` allowlist branch was functionally dead for extension tools, and `extensions: true` with a `disallowedTools` denylist let denylisted extension tools slip through. Upstream PR: [tintinweb/pi-subagents#72](https://github.com/tintinweb/pi-subagents/pull/72).
+3. **`<active_agent>` system-prompt tag** (`src/prompts.ts`) — `buildAgentPrompt` prepends `<active_agent name="${config.name}"/>` to every assembled child system prompt (both `replace` and `append` modes). Downstream extensions like [`@gotgenes/pi-permission-system`](https://github.com/gotgenes/pi-permission-system) parse this tag to resolve per-agent `permission:` frontmatter inside the child session. Upstream PR: [tintinweb/pi-subagents#73](https://github.com/tintinweb/pi-subagents/pull/73).
+
+The upstream `vitest` suite plus tests added for each patch all pass on every commit.
+
 ## License
 
-MIT — [tintinweb](https://github.com/tintinweb)
+MIT — [tintinweb](https://github.com/tintinweb) (upstream) and [Chris Lasher](https://github.com/gotgenes) (fork)

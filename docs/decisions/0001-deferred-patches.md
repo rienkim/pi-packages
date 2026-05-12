@@ -43,17 +43,15 @@ Neither matches the production need. For RepOne (and any consumer that installs 
 
 We therefore defer Patch 1 rather than carry a speculative patch in the fork's diff against upstream. A follow-up issue on the RepOne board (linked from #443) captures the criterion for revisiting: **a workflow that needs `pi -e <path>` ephemeral extensions to reach children**.
 
-### Upstream PRs are deferred
+### Upstream PRs are open
 
-Patches 2 and 3 are both clearly upstream-mergeable bug fixes — they finish a mirror the upstream fork already started (carrying the parent's session configuration through to the child). The natural place for them is in `tintinweb/pi-subagents` itself.
+All three divergences now have upstream PRs, opened after production validation in RepOne:
 
-We defer opening the PRs until **Patches 2 and 3 have been validated end-to-end in production** through at least one milestone of RepOne usage. The reasoning:
+1. **Peer-dep migration** — [tintinweb/pi-subagents#71](https://github.com/tintinweb/pi-subagents/pull/71) (`fix(deps)!: migrate from deprecated @mariozechner/pi-* to @earendil-works/pi-*`)
+2. **Post-bind re-filter** — [tintinweb/pi-subagents#72](https://github.com/tintinweb/pi-subagents/pull/72) (`fix(agent-runner): re-filter active tools after bindExtensions so extension tools land in child`)
+3. **Active-agent tag** — [tintinweb/pi-subagents#73](https://github.com/tintinweb/pi-subagents/pull/73) (`feat(prompts): inject <active_agent name="..."/> tag for permission resolution`)
 
-1. Production validation is stronger evidence for the upstream maintainer than the spike findings alone.
-2. The patch shapes (especially Patch 2's helper-extraction refactor and Patch 3's exact prepend point) may need adjustment based on real-world behavior; opening PRs prematurely risks needing to amend them under review.
-3. Carrying the fork is low-cost while we iterate; the publishing infrastructure mirrors the other Pi siblings.
-
-A follow-up issue on the RepOne board (linked from #443) tracks the upstream-PR work and the criterion for proceeding.
+Once these land upstream, the fork's divergence reduces to package naming and tooling.
 
 ## Consequences
 
@@ -61,15 +59,13 @@ A follow-up issue on the RepOne board (linked from #443) tracks the upstream-PR 
 
 - The fork's diff against upstream stays minimal — three patches plus tooling alignment.
 - We avoid landing a speculative Patch 1 that would need rework if upstream's `ExtensionContext` API changes.
-- We get production evidence before asking the upstream maintainer to review.
+- Production evidence strengthened the upstream PRs.
 
 ### Negative
 
 - The `pi -e <path>` ephemeral-extension case in subagents will not work until Patch 1 lands. We accept this because no consumer in scope uses that pattern.
-- Patches 2 and 3 stay carried in `@gotgenes/pi-subagents` rather than upstream. Consumers must use this fork (not the upstream package) to get the patches.
 
 ### Operational
 
-- A follow-up issue on the RepOne board (linked from this fork's `README.md` "Deviations from upstream" section and from RepOne issue #443) records both deferrals.
-- When upstream PRs are eventually opened, they should be opened separately for Patches 2 and 3 to keep review simple.
+- Upstream PRs are open and linked above. Once merged, the fork's behavioral divergence is eliminated.
 - When Patch 1 is eventually added, it should be a separate ADR in `docs/decisions/` with its own follow-up.
