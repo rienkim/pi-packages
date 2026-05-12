@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.2] - 2026-05-12
+
 > **Heads-up — behavior changes in skill preloading:**
 > - **`.txt` and extensionless flat skill files are no longer loaded.** Only `<name>.md` flat files and `<name>/SKILL.md` directory skills resolve now. Rename any `<name>.txt` or extensionless skill files to `<name>.md`.
 
