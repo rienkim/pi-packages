@@ -1,0 +1,3 @@
+[env]
+# Inject scripts/bin ahead of system PATH so project shims (e.g., npm → pnpm) take priority.
+_.path = ["scripts/bin"]
