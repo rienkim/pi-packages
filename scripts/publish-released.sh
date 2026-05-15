@@ -15,7 +15,6 @@ if [ -z "${RELEASES:-}" ]; then
 fi
 
 packages=(
-  "packages/pi-anthropic-auth:@gotgenes/pi-anthropic-auth"
   "packages/pi-autoformat:@gotgenes/pi-autoformat"
   "packages/pi-github-tools:@gotgenes/pi-github-tools"
   "packages/pi-permission-system:@gotgenes/pi-permission-system"

@@ -17,7 +17,6 @@ jobs:
           script: |
             const body = context.payload.issue.body || '';
             const packages = [
-              'pi-anthropic-auth',
               'pi-autoformat',
               'pi-github-tools',
               'pi-permission-system',

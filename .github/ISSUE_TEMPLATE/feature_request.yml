@@ -9,7 +9,6 @@ body:
       description: Which package does this relate to?
       multiple: true
       options:
-        - pi-anthropic-auth
         - pi-autoformat
         - pi-github-tools
         - pi-permission-system

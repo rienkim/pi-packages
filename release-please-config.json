@@ -1,9 +1,6 @@
 {
   "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
   "packages": {
-    "packages/pi-anthropic-auth": {
-      "component": "pi-anthropic-auth"
-    },
     "packages/pi-autoformat": {
       "component": "pi-autoformat"
     },
