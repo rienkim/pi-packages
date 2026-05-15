@@ -41,13 +41,11 @@
   "scripts": {
     "check": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest",
-    "lint:md": "markdownlint-cli2 --config ../../.markdownlint-cli2.yaml 'AGENTS.md' 'docs/**/*.md'"
+    "test:watch": "vitest"
   },
   "devDependencies": {
     "@biomejs/biome": "catalog:",
     "@types/node": "catalog:",
-    "markdownlint-cli2": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"
   },

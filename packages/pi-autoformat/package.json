@@ -33,14 +33,12 @@
   "scripts": {
     "check": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest",
-    "lint:md": "markdownlint-cli2 --config ../../.markdownlint-cli2.yaml '*.md' 'docs/**/*.md'"
+    "test:watch": "vitest"
   },
   "devDependencies": {
     "@biomejs/biome": "catalog:",
     "@earendil-works/pi-coding-agent": "^0.74.0",
     "@types/node": "catalog:",
-    "markdownlint-cli2": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"
   }

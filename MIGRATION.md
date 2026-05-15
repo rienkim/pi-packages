@@ -40,7 +40,7 @@ git subtree add --prefix=packages/pi-subagents \
 > **Note on interweaved history:** After import, `git log` shows commits from all packages mixed together chronologically.
 > Use `git log packages/pi-foo/` to see only one package's history.
 > This is cosmetic — there are no functional issues.
-
+>
 > **Note on catppuccin:** pi-coding-agent-catppuccin is a fork from `otahontas`.
 > If you want to import from your own fork instead, change the URL.
 > The `main` ref may need to be `chore/catppuccin-text-cohesion` or whatever branch you want as the starting point.
@@ -208,7 +208,7 @@ After migration, archive the original repos to prevent new issues from being fil
 
 ```bash
 for repo in pi-anthropic-auth pi-autoformat pi-github-tools pi-permission-system pi-subagents; do
-  gh repo edit "gotgenes/$repo" --description "Moved to gotgenes/pi-packages" 
+  gh repo edit "gotgenes/$repo" --description "Moved to gotgenes/pi-packages"
   gh repo archive "gotgenes/$repo" --yes
 done
 ```
@@ -271,7 +271,7 @@ This step is best done in a new session inside the monorepo, with all package fi
 ## What each package loses (moved to root)
 
 | File | Where it went |
-|------|---------------|
+| ---- | ------------- |
 | `release-please-config.json` | Root `release-please-config.json` (monorepo mode) |
 | `.release-please-manifest.json` | Root `.release-please-manifest.json` |
 | `pnpm-workspace.yaml` | Root `pnpm-workspace.yaml` |

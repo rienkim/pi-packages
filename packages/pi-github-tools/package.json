@@ -12,8 +12,7 @@
   "scripts": {
     "check": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest",
-    "lint:md": "markdownlint-cli2 --config ../../.markdownlint-cli2.yaml '*.md' 'docs/**/*.md'"
+    "test:watch": "vitest"
   },
   "keywords": [
     "pi-package",
@@ -54,7 +53,6 @@
     "@biomejs/biome": "catalog:",
     "@earendil-works/pi-coding-agent": "^0.74.0",
     "@types/node": "catalog:",
-    "markdownlint-cli2": "catalog:",
     "typebox": "^1.1.38",
     "typescript": "catalog:",
     "vitest": "catalog:"

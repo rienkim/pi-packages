@@ -12,9 +12,6 @@ catalogs:
     '@types/node':
       specifier: ^25.6.2
       version: 25.7.0
-    markdownlint-cli2:
-      specifier: ^0.22.1
-      version: 0.22.1
     typescript:
       specifier: ^6.0.3
       version: 6.0.3
@@ -29,6 +26,9 @@ importers:
       '@biomejs/biome':
         specifier: ^2.4.14
         version: 2.4.15
+      markdownlint-cli2:
+        specifier: ^0.22.1
+        version: 0.22.1
 
   packages/pi-autoformat:
     devDependencies:
@@ -41,9 +41,6 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 25.7.0
-      markdownlint-cli2:
-        specifier: 'catalog:'
-        version: 0.22.1
       typescript:
         specifier: 'catalog:'
         version: 6.0.3
@@ -62,9 +59,6 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 25.7.0
-      markdownlint-cli2:
-        specifier: 'catalog:'
-        version: 0.22.1
       typebox:
         specifier: ^1.1.38
         version: 1.1.38
@@ -96,9 +90,6 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 25.7.0
-      markdownlint-cli2:
-        specifier: 'catalog:'
-        version: 0.22.1
       typescript:
         specifier: 'catalog:'
         version: 6.0.3
@@ -133,9 +124,6 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 25.7.0
-      markdownlint-cli2:
-        specifier: 'catalog:'
-        version: 0.22.1
       typescript:
         specifier: 'catalog:'
         version: 6.0.3
