@@ -129,11 +129,8 @@ export async function mergeReleasePR(
     };
   }
 
-  const mergeArgs = ["pr", "merge", String(prNumber)];
-  if (args.method) {
-    mergeArgs.push(`--${args.method}`);
-  }
-  await gh(...mergeArgs);
+  const method = args.method ?? "merge";
+  await gh("pr", "merge", String(prNumber), `--${method}`);
 
   await git("pull", "--ff-only");
 

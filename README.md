@@ -85,7 +85,7 @@ Merge method precedence (highest to lowest):
 
 1. Explicit `method` parameter
 2. `defaultMergeMethod` from [configuration](#configuration)
-3. `gh` CLI default (merge commit, or your repo's configured default)
+3. `"rebase"` (hardcoded fallback)
 
 Returns merge confirmation with new HEAD SHA, or a structured error if not mergeable.
 
@@ -134,14 +134,14 @@ Two locations are supported — project config takes precedence over global:
 
 | Scope | Path |
 | --- | --- |
-| Global | `~/.pi/extensions/@gotgenes/pi-github-tools/config.json` |
+| Global | `~/.pi/agent/extensions/@gotgenes/pi-github-tools/config.json` |
 | Project | `.pi/extensions/@gotgenes/pi-github-tools/config.json` |
 
 ### Options
 
 | Key | Type | Default | Description |
 | --- | --- | --- | --- |
-| `defaultMergeMethod` | `"rebase"` \| `"squash"` \| `"merge"` | — (`gh` default) | Default merge strategy for `release_pr_merge` |
+| `defaultMergeMethod` | `"rebase"` \| `"squash"` \| `"merge"` | `"rebase"` | Default merge strategy for `release_pr_merge` |
 
 ### Example
 

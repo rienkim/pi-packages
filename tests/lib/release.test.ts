@@ -97,7 +97,7 @@ describe("mergeReleasePR", () => {
     });
   }
 
-  it("omits strategy flag when no method is specified", async () => {
+  it("defaults to --merge when no method is specified", async () => {
     setupMergeMocks();
 
     const result = await mergeReleasePR({ prNumber: 42 });
@@ -107,7 +107,7 @@ describe("mergeReleasePR", () => {
 
     expect(mockRunCommand).toHaveBeenNthCalledWith(2, {
       cmd: "gh",
-      args: ["pr", "merge", "42"],
+      args: ["pr", "merge", "42", "--merge"],
     });
     expect(mockRunCommand).toHaveBeenNthCalledWith(3, {
       cmd: "git",

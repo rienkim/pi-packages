@@ -41,7 +41,9 @@ export function registerReleasePrMerge(pi: ExtensionAPI): void {
     async execute(_toolCallId, params) {
       try {
         const config = loadConfig({
-          globalConfigPath: getGlobalConfigPath(join(homedir(), ".pi")),
+          globalConfigPath: getGlobalConfigPath(
+            join(homedir(), ".pi", "agent"),
+          ),
           projectConfigPath: getProjectConfigPath(process.cwd()),
         });
         const result = await mergeReleasePR({
