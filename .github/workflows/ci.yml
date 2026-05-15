@@ -68,18 +68,4 @@ jobs:
       - name: Publish released packages
         env:
           RELEASES: ${{ needs.release-please.outputs.releases }}
-        run: |
-          publish_if_released() {
-            local path="$1" filter="$2"
-            if [ "$(echo "$RELEASES" | jq -r ".\"${path}--release_created\" // \"false\"")" = "true" ]; then
-              echo "::group::Publishing $filter"
-              pnpm --filter "$filter" publish --access public --no-git-checks --provenance
-              echo "::endgroup::"
-            fi
-          }
-
-          publish_if_released "packages/pi-anthropic-auth" "@gotgenes/pi-anthropic-auth"
-          publish_if_released "packages/pi-autoformat" "@gotgenes/pi-autoformat"
-          publish_if_released "packages/pi-github-tools" "@gotgenes/pi-github-tools"
-          publish_if_released "packages/pi-permission-system" "@gotgenes/pi-permission-system"
-          publish_if_released "packages/pi-subagents" "@gotgenes/pi-subagents"
+        run: ./scripts/publish-released.sh
