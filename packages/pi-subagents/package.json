@@ -1,0 +1,71 @@
+{
+  "name": "@gotgenes/pi-subagents",
+  "version": "1.0.0",
+  "description": "A pi extension that brings Claude Code-style autonomous sub-agents to pi. Friendly fork of @tintinweb/pi-subagents.",
+  "author": {
+    "name": "Chris Lasher"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gotgenes/pi-subagents.git"
+  },
+  "homepage": "https://github.com/gotgenes/pi-subagents#readme",
+  "bugs": {
+    "url": "https://github.com/gotgenes/pi-subagents/issues"
+  },
+  "keywords": [
+    "pi-package",
+    "pi",
+    "pi-extension",
+    "subagent",
+    "agent",
+    "autonomous"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-ai": ">=0.74.0",
+    "@earendil-works/pi-coding-agent": ">=0.74.0",
+    "@earendil-works/pi-tui": ">=0.74.0"
+  },
+  "dependencies": {
+    "@sinclair/typebox": "^0.34.49",
+    "croner": "^10.0.1",
+    "nanoid": "^5.0.0"
+  },
+  "packageManager": "pnpm@11.1.1",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "prepare": "command -v prek >/dev/null 2>&1 && prek install || echo 'prek not found — skipping hook install (see README)'",
+    "build": "tsc",
+    "prepublishOnly": "pnpm run lint:all && pnpm run typecheck && pnpm run test && pnpm run build",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "lint": "biome check src/ test/",
+    "lint:fix": "biome check --fix src/ test/",
+    "lint:md": "markdownlint-cli2 '*.md' 'docs/**/*.md'",
+    "lint:md:fix": "markdownlint-cli2 --fix '*.md' 'docs/**/*.md'",
+    "lint:all": "pnpm run lint && pnpm run lint:md",
+    "format": "biome format --write src/ test/",
+    "check": "pnpm run build && pnpm run lint:all && pnpm run test"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.4.14",
+    "@types/node": "^25.5.0",
+    "markdownlint-cli2": "^0.22.1",
+    "typescript": "^6.0.0",
+    "vitest": "^4.0.18"
+  },
+  "pi": {
+    "extensions": [
+      "./src/index.ts"
+    ],
+    "video": "https://github.com/gotgenes/pi-subagents/raw/main/media/demo.mp4",
+    "image": "https://github.com/gotgenes/pi-subagents/raw/main/media/screenshot.png"
+  }
+}
