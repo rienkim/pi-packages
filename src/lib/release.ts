@@ -164,6 +164,7 @@ export async function watchRelease(args: WatchReleaseArgs): Promise<string> {
   let elapsed = 0;
 
   while (true) {
+    await git("fetch", "--tags");
     const tagOutput = await git("tag", "--points-at", "HEAD");
     const tags = tagOutput
       .split("\n")

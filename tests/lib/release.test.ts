@@ -153,6 +153,12 @@ describe("mergeReleasePR", () => {
 
 describe("watchRelease", () => {
   it("returns when a tag is found on HEAD", async () => {
+    // git fetch --tags
+    mockRunCommand.mockResolvedValueOnce({
+      stdout: "",
+      stderr: "",
+      exitCode: 0,
+    });
     // git tag --points-at HEAD
     mockRunCommand.mockResolvedValueOnce({
       stdout: "v1.2.0\n",
@@ -169,18 +175,23 @@ describe("watchRelease", () => {
     const result = await watchRelease({ timeout: 120 });
     expect(result).toContain("v1.2.0");
 
-    // Must use git not gh for both calls
     expect(mockRunCommand).toHaveBeenNthCalledWith(1, {
+      cmd: "git",
+      args: ["fetch", "--tags"],
+    });
+    expect(mockRunCommand).toHaveBeenNthCalledWith(2, {
       cmd: "git",
       args: ["tag", "--points-at", "HEAD"],
     });
-    expect(mockRunCommand).toHaveBeenNthCalledWith(2, {
+    expect(mockRunCommand).toHaveBeenNthCalledWith(3, {
       cmd: "git",
       args: ["rev-parse", "HEAD"],
     });
   });
 
   it("returns timeout when no tag appears", async () => {
+    // git fetch --tags
+    mockCmd("");
     // No tags on first poll
     mockCmd("\n");
 
