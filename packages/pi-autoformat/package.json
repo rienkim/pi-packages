@@ -34,7 +34,7 @@
     "check": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "lint:md": "markdownlint-cli2 '*.md' 'docs/**/*.md'"
+    "lint:md": "markdownlint-cli2 --config ../../.markdownlint-cli2.yaml '*.md' 'docs/**/*.md'"
   },
   "devDependencies": {
     "@biomejs/biome": "catalog:",

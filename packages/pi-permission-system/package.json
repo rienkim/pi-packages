@@ -19,7 +19,7 @@
     "check": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "lint:md": "markdownlint-cli2 '*.md' 'docs/**/*.md' '.pi/prompts/**/*.md'"
+    "lint:md": "markdownlint-cli2 --config ../../.markdownlint-cli2.yaml '*.md' 'docs/**/*.md' '.pi/prompts/**/*.md'"
   },
   "keywords": [
     "pi-package",
