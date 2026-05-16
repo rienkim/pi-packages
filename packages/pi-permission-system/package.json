@@ -40,11 +40,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/gotgenes/pi-permission-system.git"
+    "url": "git+https://github.com/gotgenes/pi-packages.git",
+    "directory": "packages/pi-permission-system"
   },
-  "homepage": "https://github.com/gotgenes/pi-permission-system#readme",
+  "homepage": "https://github.com/gotgenes/pi-packages/tree/main/packages/pi-permission-system#readme",
   "bugs": {
-    "url": "https://github.com/gotgenes/pi-permission-system/issues"
+    "url": "https://github.com/gotgenes/pi-packages/issues"
   },
   "engines": {
     "node": ">=20"

@@ -19,8 +19,13 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/gotgenes/pi-autoformat"
+    "url": "git+https://github.com/gotgenes/pi-packages.git",
+    "directory": "packages/pi-autoformat"
   },
+  "bugs": {
+    "url": "https://github.com/gotgenes/pi-packages/issues"
+  },
+  "homepage": "https://github.com/gotgenes/pi-packages/tree/main/packages/pi-autoformat#readme",
   "publishConfig": {
     "access": "public"
   },

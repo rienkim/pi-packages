@@ -8,11 +8,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/gotgenes/pi-subagents.git"
+    "url": "git+https://github.com/gotgenes/pi-packages.git",
+    "directory": "packages/pi-subagents"
   },
-  "homepage": "https://github.com/gotgenes/pi-subagents#readme",
+  "homepage": "https://github.com/gotgenes/pi-packages/tree/main/packages/pi-subagents#readme",
   "bugs": {
-    "url": "https://github.com/gotgenes/pi-subagents/issues"
+    "url": "https://github.com/gotgenes/pi-packages/issues"
   },
   "keywords": [
     "pi-package",

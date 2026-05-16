@@ -31,11 +31,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/gotgenes/pi-github-tools.git"
+    "url": "git+https://github.com/gotgenes/pi-packages.git",
+    "directory": "packages/pi-github-tools"
   },
-  "homepage": "https://github.com/gotgenes/pi-github-tools#readme",
+  "homepage": "https://github.com/gotgenes/pi-packages/tree/main/packages/pi-github-tools#readme",
   "bugs": {
-    "url": "https://github.com/gotgenes/pi-github-tools/issues"
+    "url": "https://github.com/gotgenes/pi-packages/issues"
   },
   "engines": {
     "node": ">=20"
