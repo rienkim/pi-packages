@@ -40,8 +40,8 @@ interface SpawnOptions {
   isBackground?: boolean;
   /**
    * Skip the maxConcurrent queue check for this spawn — start immediately even
-   * if the configured concurrency limit would otherwise queue it. Used by the
-   * scheduler so a fired job can't be deferred past its trigger window.
+   * if the configured concurrency limit would otherwise queue it. Useful for
+   * callers (e.g. cross-extension RPC) that must not be deferred by the queue.
    */
   bypassQueue?: boolean;
   /** Isolation mode — "worktree" creates a temp git worktree for the agent. */
