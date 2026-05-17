@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.0.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v3.0.0...pi-subagents-v4.0.0) (2026-05-17)
+
+
+### ⚠ BREAKING CHANGES
+
+* The untyped globalThis[Symbol.for("pi-subagents:manager")] accessor is removed. Use getSubagentsService() from the package's public exports instead.
+* The public API surface is now exported from src/service.ts. The old untyped Symbol.for("pi-subagents:manager") global will be removed in a subsequent commit.
+
+### Features
+
+* add SubagentRecord serializer ([d7afb45](https://github.com/gotgenes/pi-packages/commit/d7afb4569c9e28ce5d4bf7fb1ac560b0bcbb7c90))
+* add SubagentsService types and accessor functions ([468623c](https://github.com/gotgenes/pi-packages/commit/468623c936f45cc30d3c5dde134cc2d21da4a0c4))
+* expose public service entry point via package exports ([0dbeaaf](https://github.com/gotgenes/pi-packages/commit/0dbeaaf39c79717df8cabf59e8ba53652f9bc7af))
+* implement getRecord and listAgents on SubagentsService adapter ([a6da473](https://github.com/gotgenes/pi-packages/commit/a6da47393f6faa3fef93bd065c1ad1a0613d1636))
+* implement spawn with model resolution on SubagentsService adapter ([fd70d82](https://github.com/gotgenes/pi-packages/commit/fd70d828905bc3415fa8b8aebfe4c2a5355209cb))
+* implement steer, abort, waitForAll, hasRunning on adapter ([00f0b99](https://github.com/gotgenes/pi-packages/commit/00f0b99ea978625798ba67a40b375e42006d33e4))
+* publish SubagentsService at extension init, remove old untyped global ([6047e2b](https://github.com/gotgenes/pi-packages/commit/6047e2bbbaf87b5e28325b084b09daf2b0c9b6b9))
+
+
+### Documentation
+
+* plan SubagentsService implementation ([#48](https://github.com/gotgenes/pi-packages/issues/48)) ([6bd2af8](https://github.com/gotgenes/pi-packages/commit/6bd2af862fb7e7f429617c154391c800b50c5d86))
+* **retro:** add retro notes for issue [#49](https://github.com/gotgenes/pi-packages/issues/49) ([69a5bfc](https://github.com/gotgenes/pi-packages/commit/69a5bfc94edfc445d46fb495449649998614f86d))
+
 ## [3.0.0](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v2.0.0...pi-subagents-v3.0.0) (2026-05-17)
 
 
