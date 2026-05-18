@@ -13,124 +13,30 @@
 import { existsSync, mkdirSync, readFileSync, unlinkSync } from "node:fs";
 import { join } from "node:path";
 import { defineTool, type ExtensionAPI, type ExtensionCommandContext, getAgentDir } from "@earendil-works/pi-coding-agent";
-import { Text } from "@earendil-works/pi-tui";
-import { Type } from "@sinclair/typebox";
 import { AgentManager } from "./agent-manager.js";
-import { getAgentConversation, getDefaultMaxTurns, getGraceTurns, normalizeMaxTurns, setDefaultMaxTurns, setGraceTurns, steerAgent } from "./agent-runner.js";
-import { BUILTIN_TOOL_NAMES, getAgentConfig, getAllTypes, getAvailableTypes, getDefaultAgentNames, getUserAgentNames, registerAgents, resolveType } from "./agent-types.js";
+import { getAgentConversation, getDefaultMaxTurns, getGraceTurns, setDefaultMaxTurns, setGraceTurns, steerAgent } from "./agent-runner.js";
+import { BUILTIN_TOOL_NAMES, getAgentConfig, getAllTypes, getAvailableTypes, getDefaultAgentNames, getUserAgentNames, registerAgents, } from "./agent-types.js";
 import { loadCustomAgents } from "./custom-agents.js";
-import { resolveAgentInvocationConfig } from "./invocation-config.js";
-import { type ModelRegistry, resolveInvocationModel, resolveModel } from "./model-resolver.js";
+import { type ModelRegistry, resolveModel } from "./model-resolver.js";
 import { buildEventData, createNotificationSystem } from "./notification.js";
-import { createOutputFilePath, streamToOutputFile, writeInitialEntry } from "./output-file.js";
 import { createNotificationRenderer } from "./renderer.js";
 import { publishSubagentsService, unpublishSubagentsService } from "./service.js";
 import { createSubagentsService } from "./service-adapter.js";
 import { applyAndEmitLoaded, type SubagentsSettings, saveAndEmitChanged } from "./settings.js";
+import { createAgentTool } from "./tools/agent-tool.js";
 import { createGetResultTool } from "./tools/get-result-tool.js";
-import { formatLifetimeTokens, getModelLabelFromConfig, textResult } from "./tools/helpers.js";
+import { getModelLabelFromConfig, } from "./tools/helpers.js";
 import { createSteerTool } from "./tools/steer-tool.js";
-import { type AgentConfig, type AgentInvocation, type AgentRecord, type NotificationDetails, type SubagentType } from "./types.js";
+import { type AgentConfig, type AgentRecord, type NotificationDetails, } from "./types.js";
 import {
   type AgentActivity,
-  type AgentDetails,
   AgentWidget,
-  buildInvocationTags,
-  describeActivity,
   formatDuration,
-  formatMs,
-  formatTokens,
-  formatTurns,
   getDisplayName,
-  getPromptModeLabel,
-  SPINNER,
   type UICtx,
 } from "./ui/agent-widget.js";
-import { addUsage, getSessionContextPercent, type LifetimeUsage } from "./usage.js";
-
-// ---- Shared helpers (re-exported from tools/helpers) ----
-
-/**
- * Create an AgentActivity state and spawn callbacks for tracking tool usage.
- * Used by both foreground and background paths to avoid duplication.
- */
-function createActivityTracker(maxTurns?: number, onStreamUpdate?: () => void) {
-  const state: AgentActivity = {
-    activeTools: new Map(),
-    toolUses: 0,
-    turnCount: 1,
-    maxTurns,
-    responseText: "",
-    session: undefined,
-    lifetimeUsage: { input: 0, output: 0, cacheWrite: 0 },
-  };
-
-  const callbacks = {
-    onToolActivity: (activity: { type: "start" | "end"; toolName: string }) => {
-      if (activity.type === "start") {
-        state.activeTools.set(activity.toolName + "_" + Date.now(), activity.toolName);
-      } else {
-        for (const [key, name] of state.activeTools) {
-          if (name === activity.toolName) { state.activeTools.delete(key); break; }
-        }
-        state.toolUses++;
-      }
-      onStreamUpdate?.();
-    },
-    onTextDelta: (_delta: string, fullText: string) => {
-      state.responseText = fullText;
-      onStreamUpdate?.();
-    },
-    onTurnEnd: (turnCount: number) => {
-      state.turnCount = turnCount;
-      onStreamUpdate?.();
-    },
-    onSessionCreated: (session: any) => {
-      state.session = session;
-    },
-    onAssistantUsage: (usage: { input: number; output: number; cacheWrite: number }) => {
-      addUsage(state.lifetimeUsage, usage);
-      onStreamUpdate?.();
-    },
-  };
-
-  return { state, callbacks };
-}
 
 
-
-/** Parenthetical status note for completed agent result text. */
-function getStatusNote(status: string): string {
-  switch (status) {
-    case "aborted": return " (aborted — max turns exceeded, output may be incomplete)";
-    case "steered": return " (wrapped up — reached turn limit)";
-    case "stopped": return " (stopped by user)";
-    default: return "";
-  }
-}
-
-
-
-/** Build AgentDetails from a base + record-specific fields. */
-function buildDetails(
-  base: Pick<AgentDetails, "displayName" | "description" | "subagentType" | "modelName" | "tags">,
-  record: { toolUses: number; startedAt: number; completedAt?: number; status: string; error?: string; id?: string; session?: any; lifetimeUsage: LifetimeUsage },
-  activity?: AgentActivity,
-  overrides?: Partial<AgentDetails>,
-): AgentDetails {
-  return {
-    ...base,
-    toolUses: record.toolUses,
-    tokens: formatLifetimeTokens(record),
-    turnCount: activity?.turnCount,
-    maxTurns: activity?.maxTurns,
-    durationMs: (record.completedAt ?? Date.now()) - record.startedAt,
-    status: record.status as AgentDetails["status"],
-    agentId: record.id,
-    error: record.error,
-    ...overrides,
-  };
-}
 
 
 
@@ -286,426 +192,28 @@ export default function (pi: ExtensionAPI) {
 
   // ---- Agent tool ----
 
-  pi.registerTool(defineTool({
-    name: "Agent",
-    label: "Agent",
-    description: `Launch a new agent to handle complex, multi-step tasks autonomously.
-
-The Agent tool launches specialized agents that autonomously handle complex tasks. Each agent type has specific capabilities and tools available to it.
-
-Available agent types:
-${typeListText}
-
-Guidelines:
-- For parallel work, use run_in_background: true on each agent. Foreground calls run sequentially — only one executes at a time.
-- Use Explore for codebase searches and code understanding.
-- Use Plan for architecture and implementation planning.
-- Use general-purpose for complex tasks that need file editing.
-- Provide clear, detailed prompts so the agent can work autonomously.
-- Agent results are returned as text — summarize them for the user.
-- Use run_in_background for work you don't need immediately. You will be notified when it completes.
-- Use resume with an agent ID to continue a previous agent's work.
-- Use steer_subagent to send mid-run messages to a running background agent.
-- Use model to specify a different model (as "provider/modelId", or fuzzy e.g. "haiku", "sonnet").
-- Use thinking to control extended thinking level.
-- Use inherit_context if the agent needs the parent conversation history.
-- Use isolation: "worktree" to run the agent in an isolated git worktree (safe parallel file modifications).`,
-    parameters: Type.Object({
-      prompt: Type.String({
-        description: "The task for the agent to perform.",
-      }),
-      description: Type.String({
-        description: "A short (3-5 word) description of the task (shown in UI).",
-      }),
-      subagent_type: Type.String({
-        description: `The type of specialized agent to use. Available types: ${getAvailableTypes().join(", ")}. Custom agents from .pi/agents/*.md (project) or ${getAgentDir()}/agents/*.md (global) are also available.`,
-      }),
-      model: Type.Optional(
-        Type.String({
-          description:
-            'Optional model override. Accepts "provider/modelId" or fuzzy name (e.g. "haiku", "sonnet"). Omit to use the agent type\'s default.',
-        }),
-      ),
-      thinking: Type.Optional(
-        Type.String({
-          description: "Thinking level: off, minimal, low, medium, high, xhigh. Overrides agent default.",
-        }),
-      ),
-      max_turns: Type.Optional(
-        Type.Number({
-          description: "Maximum number of agentic turns before stopping. Omit for unlimited (default).",
-          minimum: 1,
-        }),
-      ),
-      run_in_background: Type.Optional(
-        Type.Boolean({
-          description: "Set to true to run in background. Returns agent ID immediately. You will be notified on completion.",
-        }),
-      ),
-      resume: Type.Optional(
-        Type.String({
-          description: "Optional agent ID to resume from. Continues from previous context.",
-        }),
-      ),
-      isolated: Type.Optional(
-        Type.Boolean({
-          description: "If true, agent gets no extension/MCP tools — only built-in tools.",
-        }),
-      ),
-      inherit_context: Type.Optional(
-        Type.Boolean({
-          description: "If true, fork parent conversation into the agent. Default: false (fresh context).",
-        }),
-      ),
-      isolation: Type.Optional(
-        Type.Literal("worktree", {
-          description: 'Set to "worktree" to run the agent in a temporary git worktree (isolated copy of the repo). Changes are saved to a branch on completion.',
-        }),
-      ),
-    }),
-
-    // ---- Custom rendering: Claude Code style ----
-
-    renderCall(args, theme) {
-      const displayName = args.subagent_type ? getDisplayName(args.subagent_type) : "Agent";
-      const desc = args.description ?? "";
-      return new Text("▸ " + theme.fg("toolTitle", theme.bold(displayName)) + (desc ? "  " + theme.fg("muted", desc) : ""), 0, 0);
+  pi.registerTool(defineTool(createAgentTool({
+    manager: {
+      spawn: (ctx, type, prompt, opts) => manager.spawn(pi, ctx, type, prompt, opts),
+      spawnAndWait: (ctx, type, prompt, opts) => manager.spawnAndWait(pi, ctx, type, prompt, opts),
+      resume: (id, prompt, signal) => manager.resume(id, prompt, signal),
+      getRecord: (id) => manager.getRecord(id),
+      getMaxConcurrent: () => manager.getMaxConcurrent(),
+      listAgents: () => manager.listAgents(),
     },
-
-    renderResult(result, { expanded, isPartial }, theme) {
-      const details = result.details as AgentDetails | undefined;
-      if (!details) {
-        const text = result.content[0]?.type === "text" ? result.content[0].text : "";
-        return new Text(text, 0, 0);
-      }
-
-      // Helper: build "haiku · thinking: high · ⟳5≤30 · 3 tool uses · 33.8k tokens" stats string
-      const stats = (d: AgentDetails) => {
-        const parts: string[] = [];
-        if (d.modelName) parts.push(d.modelName);
-        if (d.tags) parts.push(...d.tags);
-        if (d.turnCount != null && d.turnCount > 0) {
-          parts.push(formatTurns(d.turnCount, d.maxTurns));
-        }
-        if (d.toolUses > 0) parts.push(`${d.toolUses} tool use${d.toolUses === 1 ? "" : "s"}`);
-        if (d.tokens) parts.push(d.tokens);
-        return parts.map(p => theme.fg("dim", p)).join(" " + theme.fg("dim", "·") + " ");
-      };
-
-      // ---- While running (streaming) ----
-      if (isPartial || details.status === "running") {
-        const frame = SPINNER[details.spinnerFrame ?? 0];
-        const s = stats(details);
-        let line = theme.fg("accent", frame) + (s ? " " + s : "");
-        line += "\n" + theme.fg("dim", `  ⎿  ${details.activity ?? "thinking…"}`);
-        return new Text(line, 0, 0);
-      }
-
-      // ---- Background agent launched ----
-      if (details.status === "background") {
-        return new Text(theme.fg("dim", `  ⎿  Running in background (ID: ${details.agentId})`), 0, 0);
-      }
-
-      // ---- Completed / Steered ----
-      if (details.status === "completed" || details.status === "steered") {
-        const duration = formatMs(details.durationMs);
-        const isSteered = details.status === "steered";
-        const icon = isSteered ? theme.fg("warning", "✓") : theme.fg("success", "✓");
-        const s = stats(details);
-        let line = icon + (s ? " " + s : "");
-        line += " " + theme.fg("dim", "·") + " " + theme.fg("dim", duration);
-
-        if (expanded) {
-          const resultText = result.content[0]?.type === "text" ? result.content[0].text : "";
-          if (resultText) {
-            const lines = resultText.split("\n").slice(0, 50);
-            for (const l of lines) {
-              line += "\n" + theme.fg("dim", `  ${l}`);
-            }
-            if (resultText.split("\n").length > 50) {
-              line += "\n" + theme.fg("muted", "  ... (use get_subagent_result with verbose for full output)");
-            }
-          }
-        } else {
-          const doneText = isSteered ? "Wrapped up (turn limit)" : "Done";
-          line += "\n" + theme.fg("dim", `  ⎿  ${doneText}`);
-        }
-        return new Text(line, 0, 0);
-      }
-
-      // ---- Stopped (user-initiated abort) ----
-      if (details.status === "stopped") {
-        const s = stats(details);
-        let line = theme.fg("dim", "■") + (s ? " " + s : "");
-        line += "\n" + theme.fg("dim", "  ⎿  Stopped");
-        return new Text(line, 0, 0);
-      }
-
-      // ---- Error / Aborted (hard max_turns) ----
-      const s = stats(details);
-      let line = theme.fg("error", "✗") + (s ? " " + s : "");
-
-      if (details.status === "error") {
-        line += "\n" + theme.fg("error", `  ⎿  Error: ${details.error ?? "unknown"}`);
-      } else {
-        line += "\n" + theme.fg("warning", "  ⎿  Aborted (max turns exceeded)");
-      }
-
-      return new Text(line, 0, 0);
+    widget: {
+      setUICtx: (ctx) => widget.setUICtx(ctx as UICtx),
+      ensureTimer: () => widget.ensureTimer(),
+      update: () => widget.update(),
+      markFinished: (id) => widget.markFinished(id),
     },
-
-    // ---- Execute ----
-
-    execute: async (toolCallId, params, signal, onUpdate, ctx) => {
-      // Ensure we have UI context for widget rendering
-      widget.setUICtx(ctx.ui as UICtx);
-
-      // Reload custom agents so new .pi/agents/*.md files are picked up without restart
-      reloadCustomAgents();
-
-      const rawType = params.subagent_type as SubagentType;
-      const resolved = resolveType(rawType);
-      const subagentType = resolved ?? "general-purpose";
-      const fellBack = resolved === undefined;
-
-      const displayName = getDisplayName(subagentType);
-
-      // Get agent config (if any)
-      const customConfig = getAgentConfig(subagentType);
-
-      const resolvedConfig = resolveAgentInvocationConfig(customConfig, params);
-
-      // Resolve model from agent config first; tool-call params only fill gaps.
-      const resolution = resolveInvocationModel(
-        ctx.model,
-        resolvedConfig.modelInput,
-        resolvedConfig.modelFromParams,
-        ctx.modelRegistry,
-      );
-      if (resolution.error) return textResult(resolution.error);
-      const model = resolution.model;
-
-      const thinking = resolvedConfig.thinking;
-      const inheritContext = resolvedConfig.inheritContext;
-      const runInBackground = resolvedConfig.runInBackground;
-      const isolated = resolvedConfig.isolated;
-      const isolation = resolvedConfig.isolation;
-
-      const parentModelId = ctx.model?.id;
-      const effectiveModelId = model?.id;
-      const modelName = effectiveModelId && effectiveModelId !== parentModelId
-        ? (model?.name ?? effectiveModelId).replace(/^Claude\s+/i, "").toLowerCase()
-        : undefined;
-      const effectiveMaxTurns = normalizeMaxTurns(resolvedConfig.maxTurns ?? getDefaultMaxTurns());
-      const agentInvocation: AgentInvocation = {
-        modelName,
-        thinking,
-        // Explicit value only — the default fallback would just add noise.
-        // Normalize so `0` (unlimited) doesn't surface as a misleading "max turns: 0".
-        maxTurns: normalizeMaxTurns(resolvedConfig.maxTurns),
-        isolated,
-        inheritContext,
-        runInBackground,
-        isolation,
-      };
-      // Tool-result render shows the mode label too; viewer's header already does.
-      const modeLabel = getPromptModeLabel(subagentType);
-      const { tags: invocationTags } = buildInvocationTags(agentInvocation);
-      const agentTags = modeLabel ? [modeLabel, ...invocationTags] : invocationTags;
-      const detailBase = {
-        displayName,
-        description: params.description,
-        subagentType,
-        modelName,
-        tags: agentTags.length > 0 ? agentTags : undefined,
-      };
-
-      // Resume existing agent
-      if (params.resume) {
-        const existing = manager.getRecord(params.resume);
-        if (!existing) {
-          return textResult(`Agent not found: "${params.resume}". It may have been cleaned up.`);
-        }
-        if (!existing.session) {
-          return textResult(`Agent "${params.resume}" has no active session to resume.`);
-        }
-        const record = await manager.resume(params.resume, params.prompt, signal);
-        if (!record) {
-          return textResult(`Failed to resume agent "${params.resume}".`);
-        }
-        return textResult(
-          record.result?.trim() || record.error?.trim() || "No output.",
-          buildDetails(detailBase, record),
-        );
-      }
-
-      // Background execution
-      if (runInBackground) {
-        const { state: bgState, callbacks: bgCallbacks } = createActivityTracker(effectiveMaxTurns);
-
-        // Wrap onSessionCreated to wire output file streaming.
-        // The callback lazily reads record.outputFile (set right after spawn)
-        // rather than closing over a value that doesn't exist yet.
-        let id: string;
-        const origBgOnSession = bgCallbacks.onSessionCreated;
-        bgCallbacks.onSessionCreated = (session: any) => {
-          origBgOnSession(session);
-          const rec = manager.getRecord(id);
-          if (rec?.outputFile) {
-            rec.outputCleanup = streamToOutputFile(session, rec.outputFile, id, ctx.cwd);
-          }
-        };
-
-        try {
-          id = manager.spawn(pi, ctx, subagentType, params.prompt, {
-            description: params.description,
-            model,
-            maxTurns: effectiveMaxTurns,
-            isolated,
-            inheritContext,
-            thinkingLevel: thinking,
-            isBackground: true,
-            isolation,
-            invocation: agentInvocation,
-            ...bgCallbacks,
-          });
-        } catch (err) {
-          return textResult(err instanceof Error ? err.message : String(err));
-        }
-
-        // Set output file synchronously after spawn, before the
-        // event loop yields — onSessionCreated is async so this is safe.
-        const record = manager.getRecord(id);
-        if (record) {
-          record.toolCallId = toolCallId;
-          record.outputFile = createOutputFilePath(ctx.cwd, id, ctx.sessionManager.getSessionId());
-          writeInitialEntry(record.outputFile, id, params.prompt, ctx.cwd);
-        }
-
-        agentActivity.set(id, bgState);
-        widget.ensureTimer();
-        widget.update();
-
-        // Emit created event
-        pi.events.emit("subagents:created", {
-          id,
-          type: subagentType,
-          description: params.description,
-          isBackground: true,
-        });
-
-        const isQueued = record?.status === "queued";
-        return textResult(
-          `Agent ${isQueued ? "queued" : "started"} in background.\n` +
-          `Agent ID: ${id}\n` +
-          `Type: ${displayName}\n` +
-          `Description: ${params.description}\n` +
-          (record?.outputFile ? `Output file: ${record.outputFile}\n` : "") +
-          (isQueued ? `Position: queued (max ${manager.getMaxConcurrent()} concurrent)\n` : "") +
-          `\nYou will be notified when this agent completes.\n` +
-          `Use get_subagent_result to retrieve full results, or steer_subagent to send it messages.\n` +
-          `Do not duplicate this agent's work.`,
-          { ...detailBase, toolUses: 0, tokens: "", durationMs: 0, status: "background" as const, agentId: id },
-        );
-      }
-
-      // Foreground (synchronous) execution — stream progress via onUpdate
-      let spinnerFrame = 0;
-      const startedAt = Date.now();
-      let fgId: string | undefined;
-
-      const streamUpdate = () => {
-        const details: AgentDetails = {
-          ...detailBase,
-          toolUses: fgState.toolUses,
-          tokens: formatLifetimeTokens(fgState),
-          turnCount: fgState.turnCount,
-          maxTurns: fgState.maxTurns,
-          durationMs: Date.now() - startedAt,
-          status: "running",
-          activity: describeActivity(fgState.activeTools, fgState.responseText),
-          spinnerFrame: spinnerFrame % SPINNER.length,
-        };
-        onUpdate?.({
-          content: [{ type: "text", text: `${fgState.toolUses} tool uses...` }],
-          details: details as any,
-        });
-      };
-
-      const { state: fgState, callbacks: fgCallbacks } = createActivityTracker(effectiveMaxTurns, streamUpdate);
-
-      // Wire session creation to register in widget
-      const origOnSession = fgCallbacks.onSessionCreated;
-      fgCallbacks.onSessionCreated = (session: any) => {
-        origOnSession(session);
-        for (const a of manager.listAgents()) {
-          if (a.session === session) {
-            fgId = a.id;
-            agentActivity.set(a.id, fgState);
-            widget.ensureTimer();
-            break;
-          }
-        }
-      };
-
-      // Animate spinner at ~80ms (smooth rotation through 10 braille frames)
-      const spinnerInterval = setInterval(() => {
-        spinnerFrame++;
-        streamUpdate();
-      }, 80);
-
-      streamUpdate();
-
-      let record: AgentRecord;
-      try {
-        record = await manager.spawnAndWait(pi, ctx, subagentType, params.prompt, {
-          description: params.description,
-          model,
-          maxTurns: effectiveMaxTurns,
-          isolated,
-          inheritContext,
-          thinkingLevel: thinking,
-          isolation,
-          invocation: agentInvocation,
-          signal,
-          ...fgCallbacks,
-        });
-      } catch (err) {
-        clearInterval(spinnerInterval);
-        return textResult(err instanceof Error ? err.message : String(err));
-      }
-
-      clearInterval(spinnerInterval);
-
-      // Clean up foreground agent from widget
-      if (fgId) {
-        agentActivity.delete(fgId);
-        widget.markFinished(fgId);
-      }
-
-      // Get final token count
-      const tokenText = formatLifetimeTokens(fgState);
-
-      const details = buildDetails(detailBase, record, fgState, { tokens: tokenText });
-
-      const fallbackNote = fellBack
-        ? `Note: Unknown agent type "${rawType}" — using general-purpose.\n\n`
-        : "";
-
-      if (record.status === "error") {
-        return textResult(`${fallbackNote}Agent failed: ${record.error}`, details);
-      }
-
-      const durationMs = (record.completedAt ?? Date.now()) - record.startedAt;
-      const statsParts = [`${record.toolUses} tool uses`];
-      if (tokenText) statsParts.push(tokenText);
-      return textResult(
-        `${fallbackNote}Agent completed in ${formatMs(durationMs)} (${statsParts.join(", ")})${getStatusNote(record.status)}.\n\n` +
-        (record.result?.trim() || "No output."),
-        details,
-      );
-    },
-  }));
+    agentActivity,
+    emitEvent: (name, data) => pi.events.emit(name, data),
+    reloadCustomAgents,
+    typeListText,
+    availableTypesText: getAvailableTypes().join(", "),
+    agentDir: getAgentDir(),
+  })));
 
   // ---- get_subagent_result tool ----
 

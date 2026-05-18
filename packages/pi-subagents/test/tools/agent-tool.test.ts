@@ -1,0 +1,254 @@
+import { describe, expect, it, vi } from "vitest";
+import { type AgentToolDeps, createAgentTool } from "../../src/tools/agent-tool.js";
+import type { AgentRecord } from "../../src/types.js";
+import type { AgentActivity } from "../../src/ui/agent-widget.js";
+
+function makeRecord(overrides: Partial<AgentRecord> = {}): AgentRecord {
+  return {
+    id: "agent-1",
+    type: "general-purpose",
+    description: "Test task",
+    status: "completed",
+    result: "All done.",
+    toolUses: 3,
+    startedAt: 1000,
+    completedAt: 2000,
+    lifetimeUsage: { input: 500, output: 500, cacheWrite: 0 },
+    ...overrides,
+  };
+}
+
+function makeDeps(overrides: Partial<AgentToolDeps> = {}): AgentToolDeps {
+  return {
+    manager: {
+      spawn: vi.fn().mockReturnValue("agent-1"),
+      spawnAndWait: vi.fn().mockResolvedValue(makeRecord()),
+      resume: vi.fn().mockResolvedValue(makeRecord()),
+      getRecord: vi.fn().mockReturnValue(makeRecord()),
+      getMaxConcurrent: vi.fn().mockReturnValue(4),
+      listAgents: vi.fn().mockReturnValue([]),
+    },
+    widget: {
+      setUICtx: vi.fn(),
+      ensureTimer: vi.fn(),
+      update: vi.fn(),
+      markFinished: vi.fn(),
+    },
+    agentActivity: new Map<string, AgentActivity>(),
+    emitEvent: vi.fn(),
+    reloadCustomAgents: vi.fn(),
+    typeListText: "- general-purpose: General purpose agent",
+    availableTypesText: "general-purpose, Explore, Plan",
+    agentDir: "/home/user/.pi",
+    ...overrides,
+  };
+}
+
+function makeCtx(overrides: Record<string, unknown> = {}) {
+  return {
+    model: { id: "claude-sonnet", name: "Claude Sonnet" },
+    modelRegistry: {},
+    cwd: "/test",
+    ui: { fake: true },
+    sessionManager: { getSessionId: () => "session-1" },
+    ...overrides,
+  };
+}
+
+async function execute(
+  deps: AgentToolDeps,
+  params: Record<string, unknown>,
+  ctx?: ReturnType<typeof makeCtx>,
+) {
+  const tool = createAgentTool(deps);
+  return tool.execute(
+    "tc-1",
+    params,
+    new AbortController().signal,
+    vi.fn(),
+    ctx ?? makeCtx(),
+  );
+}
+
+describe("createAgentTool", () => {
+  it("returns tool definition with correct name and label", () => {
+    const tool = createAgentTool(makeDeps());
+    expect(tool.name).toBe("Agent");
+    expect(tool.label).toBe("Agent");
+  });
+
+  it("includes typeListText in description", () => {
+    const deps = makeDeps({ typeListText: "- Explore: fast explorer" });
+    const tool = createAgentTool(deps);
+    expect(tool.description).toContain("- Explore: fast explorer");
+  });
+
+  it("calls reloadCustomAgents on each execute", async () => {
+    const deps = makeDeps();
+    await execute(deps, {
+      prompt: "test",
+      description: "test",
+      subagent_type: "general-purpose",
+    });
+    expect(deps.reloadCustomAgents).toHaveBeenCalledOnce();
+  });
+
+  it("sets UI context on widget at start of execute", async () => {
+    const deps = makeDeps();
+    const ctx = makeCtx();
+    await execute(deps, {
+      prompt: "test",
+      description: "test",
+      subagent_type: "general-purpose",
+    }, ctx);
+    expect(deps.widget.setUICtx).toHaveBeenCalledWith(ctx.ui);
+  });
+});
+
+describe("Agent tool — resume path", () => {
+  it("returns not-found when resume ID does not exist", async () => {
+    const deps = makeDeps();
+    deps.manager.getRecord = vi.fn().mockReturnValue(undefined);
+    const result = await execute(deps, {
+      prompt: "continue",
+      description: "resume",
+      subagent_type: "general-purpose",
+      resume: "nonexistent",
+    });
+    expect(result.content[0].text).toContain("Agent not found");
+  });
+
+  it("returns no-session when agent has no active session", async () => {
+    const deps = makeDeps();
+    deps.manager.getRecord = vi.fn().mockReturnValue(makeRecord({ session: undefined }));
+    const result = await execute(deps, {
+      prompt: "continue",
+      description: "resume",
+      subagent_type: "general-purpose",
+      resume: "agent-1",
+    });
+    expect(result.content[0].text).toContain("no active session");
+  });
+
+  it("returns result text on successful resume", async () => {
+    const deps = makeDeps();
+    deps.manager.getRecord = vi.fn().mockReturnValue(makeRecord({ session: {} }));
+    deps.manager.resume = vi.fn().mockResolvedValue(makeRecord({ result: "Resumed output." }));
+    const result = await execute(deps, {
+      prompt: "continue",
+      description: "resume",
+      subagent_type: "general-purpose",
+      resume: "agent-1",
+    });
+    expect(result.content[0].text).toContain("Resumed output.");
+  });
+});
+
+describe("Agent tool — model resolution error", () => {
+  it("returns error when model resolution fails", async () => {
+    const deps = makeDeps();
+    // Provide a real-enough modelRegistry so resolveInvocationModel can iterate it
+    const ctx = makeCtx({
+      modelRegistry: { getAll: () => [], getAvailable: () => [] },
+    });
+    const result = await execute(
+      deps,
+      {
+        prompt: "test",
+        description: "test",
+        subagent_type: "general-purpose",
+        model: "nonexistent-model-xyz",
+      },
+      ctx,
+    );
+    // User-specified model that doesn't resolve → error message
+    expect(result.content[0].text).toContain("nonexistent-model-xyz");
+  });
+});
+
+describe("Agent tool — background execution", () => {
+  it("returns background launch message with agent ID", async () => {
+    const deps = makeDeps();
+    const record = makeRecord({ status: "running" });
+    deps.manager.getRecord = vi.fn().mockReturnValue(record);
+    const result = await execute(deps, {
+      prompt: "do something",
+      description: "bg task",
+      subagent_type: "general-purpose",
+      run_in_background: true,
+    });
+    const text = result.content[0].text;
+    expect(text).toContain("background");
+    expect(text).toContain("agent-1");
+    expect(text).toContain("bg task");
+  });
+
+  it("emits subagents:created event for background agents", async () => {
+    const deps = makeDeps();
+    deps.manager.getRecord = vi.fn().mockReturnValue(makeRecord({ status: "running" }));
+    await execute(deps, {
+      prompt: "do something",
+      description: "bg task",
+      subagent_type: "general-purpose",
+      run_in_background: true,
+    });
+    expect(deps.emitEvent).toHaveBeenCalledWith("subagents:created", expect.objectContaining({
+      id: "agent-1",
+      isBackground: true,
+    }));
+  });
+
+  it("registers activity in agentActivity map", async () => {
+    const deps = makeDeps();
+    deps.manager.getRecord = vi.fn().mockReturnValue(makeRecord({ status: "running" }));
+    await execute(deps, {
+      prompt: "do something",
+      description: "bg task",
+      subagent_type: "general-purpose",
+      run_in_background: true,
+    });
+    expect(deps.agentActivity.has("agent-1")).toBe(true);
+  });
+});
+
+describe("Agent tool — foreground execution", () => {
+  it("returns completion message with stats", async () => {
+    const deps = makeDeps();
+    deps.manager.spawnAndWait = vi.fn().mockResolvedValue(
+      makeRecord({ result: "Task complete.", toolUses: 5 }),
+    );
+    const result = await execute(deps, {
+      prompt: "do task",
+      description: "fg task",
+      subagent_type: "general-purpose",
+    });
+    const text = result.content[0].text;
+    expect(text).toContain("Agent completed");
+    expect(text).toContain("Task complete.");
+  });
+
+  it("returns error message when agent fails", async () => {
+    const deps = makeDeps();
+    deps.manager.spawnAndWait = vi.fn().mockResolvedValue(
+      makeRecord({ status: "error", error: "Out of context" }),
+    );
+    const result = await execute(deps, {
+      prompt: "do task",
+      description: "fg task",
+      subagent_type: "general-purpose",
+    });
+    expect(result.content[0].text).toContain("Agent failed");
+    expect(result.content[0].text).toContain("Out of context");
+  });
+
+  it("returns error when spawnAndWait throws", async () => {
+    const deps = makeDeps();
+    deps.manager.spawnAndWait = vi.fn().mockRejectedValue(new Error("spawn failure"));
+    const result = await execute(deps, {
+      prompt: "do task",
+      description: "fg task",
+      subagent_type: "general-purpose",
+    });
+    expect(result.content[0].text).toContain("spawn failure");
+  });
+});
