@@ -25,6 +25,7 @@ import { createOutputFilePath, streamToOutputFile, writeInitialEntry } from "./o
 import { publishSubagentsService, unpublishSubagentsService } from "./service.js";
 import { createSubagentsService } from "./service-adapter.js";
 import { applyAndEmitLoaded, type SubagentsSettings, saveAndEmitChanged } from "./settings.js";
+import { formatLifetimeTokens, getModelLabelFromConfig, textResult } from "./tools/helpers.js";
 import { type AgentConfig, type AgentInvocation, type AgentRecord, type NotificationDetails, type SubagentType } from "./types.js";
 import {
   type AgentActivity,
@@ -43,18 +44,7 @@ import {
 } from "./ui/agent-widget.js";
 import { addUsage, getLifetimeTotal, getSessionContextPercent, type LifetimeUsage } from "./usage.js";
 
-// ---- Shared helpers ----
-
-/** Tool execute return value for a text response. */
-function textResult(msg: string, details?: AgentDetails) {
-  return { content: [{ type: "text" as const, text: msg }], details: details as any };
-}
-
-/** Format an agent's lifetime token total, or "" when zero. */
-function formatLifetimeTokens(o: { lifetimeUsage: LifetimeUsage }): string {
-  const t = getLifetimeTotal(o.lifetimeUsage);
-  return t > 0 ? formatTokens(t) : "";
-}
+// ---- Shared helpers (re-exported from tools/helpers) ----
 
 /**
  * Create an AgentActivity state and spawn callbacks for tracking tool usage.
@@ -443,13 +433,7 @@ export default function (pi: ExtensionAPI) {
     ].join("\n");
   };
 
-  /** Derive a short model label from a model string. */
-  function getModelLabelFromConfig(model: string): string {
-    // Strip provider prefix (e.g. "anthropic/claude-sonnet-4-6" → "claude-sonnet-4-6")
-    const name = model.includes("/") ? model.split("/").pop()! : model;
-    // Strip trailing date suffix (e.g. "claude-haiku-4-5-20251001" → "claude-haiku-4-5")
-    return name.replace(/-\d{8}$/, "");
-  }
+
 
   const typeListText = buildTypeListText();
 
