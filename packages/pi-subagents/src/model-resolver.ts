@@ -14,6 +14,44 @@ export interface ModelRegistry {
   getAvailable?(): any[];
 }
 
+/** Successful model resolution — `model` is the resolved or inherited model instance. */
+export interface ModelResolutionResult {
+  model: unknown;
+  error?: undefined;
+}
+
+/** Failed model resolution when the model was user-specified (params) — surface the error. */
+export interface ModelResolutionError {
+  model?: undefined;
+  error: string;
+}
+
+/** Discriminated union returned by `resolveInvocationModel`. */
+export type ModelResolution = ModelResolutionResult | ModelResolutionError;
+
+/**
+ * Resolve the effective model for an agent invocation.
+ *
+ * Encapsulates the three-branch fallback policy used in `Agent.execute`:
+ * 1. No `modelInput` → inherit `parentModel`.
+ * 2. `modelInput` resolves → return the resolved model.
+ * 3. `modelInput` fails:
+ *    - `modelFromParams` true  → return `{ error }` so the caller can surface it.
+ *    - `modelFromParams` false → silent fallback to `parentModel`.
+ */
+export function resolveInvocationModel(
+  parentModel: unknown,
+  modelInput: string | undefined,
+  modelFromParams: boolean,
+  registry: ModelRegistry,
+): ModelResolution {
+  if (!modelInput) return { model: parentModel };
+  const resolved = resolveModel(modelInput, registry);
+  if (typeof resolved !== "string") return { model: resolved };
+  if (modelFromParams) return { error: resolved };
+  return { model: parentModel };
+}
+
 /**
  * Resolve a model string to a Model instance.
  * Tries exact match first ("provider/modelId"), then fuzzy match against all available models.
