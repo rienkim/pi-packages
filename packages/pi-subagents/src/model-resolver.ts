@@ -16,7 +16,8 @@ export interface ModelRegistry {
 
 /** Successful model resolution — `model` is the resolved or inherited model instance. */
 export interface ModelResolutionResult {
-  model: unknown;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  model: any;
   error?: undefined;
 }
 

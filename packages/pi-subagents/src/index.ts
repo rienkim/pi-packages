@@ -20,7 +20,7 @@ import { getAgentConversation, getDefaultMaxTurns, getGraceTurns, normalizeMaxTu
 import { BUILTIN_TOOL_NAMES, getAgentConfig, getAllTypes, getAvailableTypes, getDefaultAgentNames, getUserAgentNames, registerAgents, resolveType } from "./agent-types.js";
 import { loadCustomAgents } from "./custom-agents.js";
 import { resolveAgentInvocationConfig } from "./invocation-config.js";
-import { type ModelRegistry, resolveModel } from "./model-resolver.js";
+import { type ModelRegistry, resolveInvocationModel, resolveModel } from "./model-resolver.js";
 import { createOutputFilePath, streamToOutputFile, writeInitialEntry } from "./output-file.js";
 import { publishSubagentsService, unpublishSubagentsService } from "./service.js";
 import { createSubagentsService } from "./service-adapter.js";
@@ -657,16 +657,14 @@ Guidelines:
       const resolvedConfig = resolveAgentInvocationConfig(customConfig, params);
 
       // Resolve model from agent config first; tool-call params only fill gaps.
-      let model = ctx.model;
-      if (resolvedConfig.modelInput) {
-        const resolved = resolveModel(resolvedConfig.modelInput, ctx.modelRegistry);
-        if (typeof resolved === "string") {
-          if (resolvedConfig.modelFromParams) return textResult(resolved);
-          // config-specified: silent fallback to parent
-        } else {
-          model = resolved;
-        }
-      }
+      const resolution = resolveInvocationModel(
+        ctx.model,
+        resolvedConfig.modelInput,
+        resolvedConfig.modelFromParams,
+        ctx.modelRegistry,
+      );
+      if (resolution.error) return textResult(resolution.error);
+      const model = resolution.model;
 
       const thinking = resolvedConfig.thinking;
       const inheritContext = resolvedConfig.inheritContext;
