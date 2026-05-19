@@ -13,12 +13,13 @@
 import { join } from "node:path";
 import { defineTool, type ExtensionAPI, getAgentDir } from "@earendil-works/pi-coding-agent";
 import { AgentManager } from "./agent-manager.js";
-import { getAgentConversation, getDefaultMaxTurns, getGraceTurns, setDefaultMaxTurns, setGraceTurns, steerAgent } from "./agent-runner.js";
+import { getAgentConversation, normalizeMaxTurns, steerAgent } from "./agent-runner.js";
 import { getAgentConfig, getAvailableTypes, getDefaultAgentNames, getUserAgentNames, registerAgents, } from "./agent-types.js";
 import { loadCustomAgents } from "./custom-agents.js";
 import { type ModelRegistry, resolveModel } from "./model-resolver.js";
 import { buildEventData, createNotificationSystem } from "./notification.js";
 import { createNotificationRenderer } from "./renderer.js";
+import { createSubagentRuntime } from "./runtime.js";
 import { publishSubagentsService, unpublishSubagentsService } from "./service.js";
 import { createSubagentsService } from "./service-adapter.js";
 import { applyAndEmitLoaded, saveAndEmitChanged } from "./settings.js";
@@ -29,7 +30,6 @@ import { createSteerTool } from "./tools/steer-tool.js";
 import { type NotificationDetails } from "./types.js";
 import { createAgentsMenuHandler } from "./ui/agent-menu.js";
 import {
-  type AgentActivity,
   AgentWidget,
   type UICtx,
 } from "./ui/agent-widget.js";
@@ -47,17 +47,17 @@ export default function (pi: ExtensionAPI) {
   // Initial load
   reloadCustomAgents();
 
-  // ---- Agent activity tracking ----
-  const agentActivity = new Map<string, AgentActivity>();
+  // ---- Runtime: all mutable extension state in one place ----
+  const runtime = createSubagentRuntime();
 
   // ---- Notification system ----
-  // Widget assigned after AgentManager construction; arrow closures capture by reference.
-  let widget: AgentWidget;
+  // runtime.widget is assigned after AgentManager construction; arrow closures
+  // capture `runtime` by reference so they always read the current value.
   const notifications = createNotificationSystem({
     sendMessage: (msg, opts) => pi.sendMessage(msg as any, opts as any),
-    agentActivity,
-    markFinished: (id) => widget.markFinished(id),
-    updateWidget: () => widget.update(),
+    agentActivity: runtime.agentActivity,
+    markFinished: (id) => runtime.widget!.markFinished(id),
+    updateWidget: () => runtime.widget!.update(),
   });
 
   // Background completion: emit lifecycle event and delegate to notification system
@@ -102,21 +102,21 @@ export default function (pi: ExtensionAPI) {
       tokensBefore: info.tokensBefore,
       compactionCount: record.compactionCount,
     });
-  });
+  },
+  () => ({ defaultMaxTurns: runtime.defaultMaxTurns, graceTurns: runtime.graceTurns }));
 
   // Typed service published via Symbol.for() for cross-extension access.
   // Consumers: const { getSubagentsService } = await import("@gotgenes/pi-subagents");
-  let currentCtx: { pi: unknown; ctx: unknown } | undefined;
   const service = createSubagentsService({
     manager,
     resolveModel,
-    getCtx: () => currentCtx,
-    getModelRegistry: () => (currentCtx?.ctx as { modelRegistry?: ModelRegistry } | undefined)?.modelRegistry,
+    getCtx: () => runtime.currentCtx,
+    getModelRegistry: () => (runtime.currentCtx?.ctx as { modelRegistry?: ModelRegistry } | undefined)?.modelRegistry,
   });
   publishSubagentsService(service);
 
   pi.on("session_start", async (_event, ctx) => {
-    currentCtx = { pi, ctx };
+    runtime.currentCtx = { pi, ctx };
     manager.clearCompleted();
   });
 
@@ -128,19 +128,19 @@ export default function (pi: ExtensionAPI) {
   // If the session is going down, there's nothing left to consume agent results.
   pi.on("session_shutdown", async () => {
     unpublishSubagentsService();
-    currentCtx = undefined;
+    runtime.currentCtx = undefined;
     manager.abortAll();
     notifications.dispose();
     manager.dispose();
   });
 
   // Live widget: show running agents above editor
-  widget = new AgentWidget(manager, agentActivity);
+  runtime.widget = new AgentWidget(manager, runtime.agentActivity);
 
   // Grab UI context from first tool execution + clear lingering widget on new turn
   pi.on("tool_execution_start", async (_event, ctx) => {
-    widget.setUICtx(ctx.ui as UICtx);
-    widget.onTurnStart();
+    runtime.widget!.setUICtx(ctx.ui as UICtx);
+    runtime.widget!.onTurnStart();
   });
 
   /** Build the full type list text dynamically from the unified registry. */
@@ -176,8 +176,8 @@ export default function (pi: ExtensionAPI) {
   applyAndEmitLoaded(
     {
       setMaxConcurrent: (n) => manager.setMaxConcurrent(n),
-      setDefaultMaxTurns,
-      setGraceTurns,
+      setDefaultMaxTurns: (n) => { runtime.defaultMaxTurns = normalizeMaxTurns(n); },
+      setGraceTurns: (n) => { runtime.graceTurns = Math.max(1, n); },
     },
     (event, payload) => pi.events.emit(event, payload),
   );
@@ -194,12 +194,12 @@ export default function (pi: ExtensionAPI) {
       listAgents: () => manager.listAgents(),
     },
     widget: {
-      setUICtx: (ctx) => widget.setUICtx(ctx as UICtx),
-      ensureTimer: () => widget.ensureTimer(),
-      update: () => widget.update(),
-      markFinished: (id) => widget.markFinished(id),
+      setUICtx: (ctx) => runtime.widget!.setUICtx(ctx as UICtx),
+      ensureTimer: () => runtime.widget!.ensureTimer(),
+      update: () => runtime.widget!.update(),
+      markFinished: (id) => runtime.widget!.markFinished(id),
     },
-    agentActivity,
+    agentActivity: runtime.agentActivity,
     emitEvent: (name, data) => pi.events.emit(name, data),
     reloadCustomAgents,
     typeListText,
@@ -234,7 +234,7 @@ export default function (pi: ExtensionAPI) {
       setMaxConcurrent: (n) => manager.setMaxConcurrent(n),
     },
     reloadCustomAgents,
-    agentActivity,
+    agentActivity: runtime.agentActivity,
     getModelLabel: (type, registry) => {
       const cfg = getAgentConfig(type);
       if (!cfg?.model) return 'inherit';
@@ -246,8 +246,8 @@ export default function (pi: ExtensionAPI) {
     },
     snapshotSettings: () => ({
       maxConcurrent: manager.getMaxConcurrent(),
-      defaultMaxTurns: getDefaultMaxTurns() ?? 0,
-      graceTurns: getGraceTurns(),
+      defaultMaxTurns: runtime.defaultMaxTurns ?? 0,
+      graceTurns: runtime.graceTurns,
     }),
     saveSettings: (settings, successMsg) => saveAndEmitChanged(
       settings,
