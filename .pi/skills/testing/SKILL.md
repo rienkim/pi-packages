@@ -15,6 +15,9 @@ Load this skill when writing, debugging, or planning tests.
   Use `.mockReset()` when the stub has no default implementation.
   Use `.mockClear()` when the `vi.mock()` factory provides a default implementation that tests must preserve.
 - When a `vi.mock()` factory references a module-scope `vi.fn()` stub, wrap the stub declaration in `vi.hoisted()` — Vitest hoists `vi.mock()` above normal declarations, so unhoisted variables are `undefined` when the factory runs.
+- When a `vi.fn()` factory returns an empty array or narrow literal, annotate its return type explicitly — `vi.fn((): string[] => [])`, not `vi.fn(() => [])`.
+  Without the annotation TypeScript infers `never[]`, and subsequent `mockReturnValueOnce([...])` calls fail with “not assignable to `never`”.
+  Use `import type` to pull domain types (e.g., `AgentConfig`, `PreloadedSkill`) for the annotation.
 - When mocking a class constructor with `vi.mock()`, use `vi.fn()` with no implementation — not `vi.fn(() => ({}))`.
   Arrow-function implementations are not constructable; `new MockClass()` throws `"is not a constructor"`.
 - When mocking `node:*` built-in modules with `vi.mock()`, include a `default` key mirroring the named exports — omitting it causes "No default export defined on the mock" errors.
