@@ -11,6 +11,7 @@ import { randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { debugLog } from "./debug.js";
 
 export interface WorktreeInfo {
   /** Absolute path to the worktree directory. */
@@ -37,7 +38,8 @@ export function createWorktree(cwd: string, agentId: string): WorktreeInfo | und
   try {
     execFileSync("git", ["rev-parse", "--is-inside-work-tree"], { cwd, stdio: "pipe", timeout: 5000 });
     execFileSync("git", ["rev-parse", "HEAD"], { cwd, stdio: "pipe", timeout: 5000 });
-  } catch {
+  } catch (err) {
+    debugLog("createWorktree git rev-parse", err);
     return undefined;
   }
 
@@ -53,8 +55,8 @@ export function createWorktree(cwd: string, agentId: string): WorktreeInfo | und
       timeout: 30000,
     });
     return { path: worktreePath, branch };
-  } catch {
-    // If worktree creation fails, return undefined (agent runs in normal cwd)
+  } catch (err) {
+    debugLog("git worktree add", err);
     return undefined;
   }
 }
@@ -107,8 +109,8 @@ export function cleanupWorktree(
         stdio: "pipe",
         timeout: 5000,
       });
-    } catch {
-      // Branch already exists — use a unique suffix
+    } catch (err) {
+      debugLog("git branch", err);
       branchName = `${worktree.branch}-${Date.now()}`;
       execFileSync("git", ["branch", branchName], {
         cwd: worktree.path,
@@ -127,9 +129,9 @@ export function cleanupWorktree(
       branch: worktree.branch,
       path: worktree.path,
     };
-  } catch {
-    // Best effort cleanup on error
-    try { removeWorktree(cwd, worktree.path); } catch { /* ignore */ }
+  } catch (err) {
+    debugLog("cleanupWorktree", err);
+    try { removeWorktree(cwd, worktree.path); } catch (removeErr) { debugLog("removeWorktree on cleanup error", removeErr); }
     return { hasChanges: false };
   }
 }
@@ -144,11 +146,11 @@ function removeWorktree(cwd: string, worktreePath: string): void {
       stdio: "pipe",
       timeout: 10000,
     });
-  } catch {
-    // If git worktree remove fails, try pruning
+  } catch (err) {
+    debugLog("git worktree remove", err);
     try {
       execFileSync("git", ["worktree", "prune"], { cwd, stdio: "pipe", timeout: 5000 });
-    } catch { /* ignore */ }
+    } catch (pruneErr) { debugLog("git worktree prune", pruneErr); }
   }
 }
 
@@ -158,5 +160,5 @@ function removeWorktree(cwd: string, worktreePath: string): void {
 export function pruneWorktrees(cwd: string): void {
   try {
     execFileSync("git", ["worktree", "prune"], { cwd, stdio: "pipe", timeout: 5000 });
-  } catch { /* ignore */ }
+  } catch (err) { debugLog("pruneWorktrees", err); }
 }
