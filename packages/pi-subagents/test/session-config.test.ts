@@ -1,4 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { getConfig } from "../src/agent-types.js";
+import type { PreloadedSkill } from "../src/skill-loader.js";
+import type { AgentConfig } from "../src/types.js";
 
 const {
   mockGetConfig,
@@ -11,33 +14,33 @@ const {
   mockBuildReadOnlyMemoryBlock,
   mockPreloadSkills,
 } = vi.hoisted(() => ({
-  mockGetConfig: vi.fn(() => ({
+  mockGetConfig: vi.fn((): ReturnType<typeof getConfig> => ({
     displayName: "Explore",
     description: "Fast codebase exploration agent",
     builtinToolNames: ["read"],
-    extensions: false as const,
-    skills: false as const,
-    promptMode: "replace" as const,
+    extensions: false,
+    skills: false,
+    promptMode: "replace",
   })),
-  mockGetAgentConfig: vi.fn(() => ({
+  mockGetAgentConfig: vi.fn((): AgentConfig | undefined => ({
     name: "Explore",
     description: "Fast codebase exploration agent",
     builtinToolNames: ["read"],
-    extensions: false as const,
-    skills: false as const,
+    extensions: false,
+    skills: false,
     systemPrompt: "You are Explore.",
-    promptMode: "replace" as const,
+    promptMode: "replace",
     inheritContext: false,
     runInBackground: false,
     isolated: false,
   })),
-  mockGetToolNamesForType: vi.fn(() => ["read"]),
-  mockGetMemoryToolNames: vi.fn(() => []),
-  mockGetReadOnlyMemoryToolNames: vi.fn(() => []),
+  mockGetToolNamesForType: vi.fn((): string[] => ["read"]),
+  mockGetMemoryToolNames: vi.fn((): string[] => []),
+  mockGetReadOnlyMemoryToolNames: vi.fn((): string[] => []),
   mockBuildAgentPrompt: vi.fn(() => "assembled system prompt"),
   mockBuildMemoryBlock: vi.fn(() => "memory block"),
   mockBuildReadOnlyMemoryBlock: vi.fn(() => "read-only memory block"),
-  mockPreloadSkills: vi.fn(() => []),
+  mockPreloadSkills: vi.fn((): PreloadedSkill[] => []),
 }));
 
 vi.mock("../src/agent-types.js", () => ({
@@ -66,8 +69,8 @@ import { assembleSessionConfig } from "../src/session-config.js";
 const mockEnv = { isGitRepo: false, branch: "", platform: "linux" };
 
 const mockRegistry = {
-  find: vi.fn(),
-  getAvailable: vi.fn(() => []),
+  find: vi.fn((): unknown => undefined),
+  getAvailable: vi.fn((): Array<{ provider: string; id: string }> => []),
 };
 
 const ctx = {
@@ -167,7 +170,7 @@ describe("assembleSessionConfig — model resolution", () => {
   });
 
   it("options.model wins over config model and parent model", () => {
-    const explicitModel = { provider: "anthropic", id: "claude-opus-4" } as any;
+    const explicitModel = { provider: "anthropic", id: "claude-opus-4" };
     mockGetAgentConfig.mockReturnValueOnce({
       name: "Explore",
       description: "test",
@@ -180,7 +183,7 @@ describe("assembleSessionConfig — model resolution", () => {
 
     const result = assembleSessionConfig(
       "Explore",
-      { ...ctx, parentModel: { provider: "anthropic", id: "claude-haiku-4" } as any },
+      { ...ctx, parentModel: { provider: "anthropic", id: "claude-haiku-4" } },
       { model: explicitModel },
       mockEnv,
     );
@@ -189,7 +192,7 @@ describe("assembleSessionConfig — model resolution", () => {
   });
 
   it("config model string resolves via registry when available", () => {
-    const resolvedModel = { provider: "anthropic", id: "claude-opus-4" } as any;
+    const resolvedModel = { provider: "anthropic", id: "claude-opus-4" };
     mockGetAgentConfig.mockReturnValueOnce({
       name: "Explore",
       description: "test",
@@ -211,7 +214,7 @@ describe("assembleSessionConfig — model resolution", () => {
   });
 
   it("falls back to parentModel when config model string is not in registry", () => {
-    const parentModel = { provider: "anthropic", id: "claude-haiku-4" } as any;
+    const parentModel = { provider: "anthropic", id: "claude-haiku-4" };
     mockGetAgentConfig.mockReturnValueOnce({
       name: "Explore",
       description: "test",
@@ -235,8 +238,8 @@ describe("assembleSessionConfig — model resolution", () => {
   });
 
   it("falls back to parentModel when config model is not available (not in getAvailable)", () => {
-    const parentModel = { provider: "anthropic", id: "claude-haiku-4" } as any;
-    const foundModel = { provider: "anthropic", id: "claude-opus-4" } as any;
+    const parentModel = { provider: "anthropic", id: "claude-haiku-4" };
+    const foundModel = { provider: "anthropic", id: "claude-opus-4" };
     mockGetAgentConfig.mockReturnValueOnce({
       name: "Explore",
       description: "test",
@@ -261,7 +264,7 @@ describe("assembleSessionConfig — model resolution", () => {
   });
 
   it("falls back to parentModel when config model has no slash", () => {
-    const parentModel = { provider: "anthropic", id: "claude-haiku-4" } as any;
+    const parentModel = { provider: "anthropic", id: "claude-haiku-4" };
     mockGetAgentConfig.mockReturnValueOnce({
       name: "Explore",
       description: "test",
@@ -283,7 +286,7 @@ describe("assembleSessionConfig — model resolution", () => {
   });
 
   it("returns parentModel when no config model and no option model", () => {
-    const parentModel = { provider: "anthropic", id: "claude-haiku-4" } as any;
+    const parentModel = { provider: "anthropic", id: "claude-haiku-4" };
 
     const result = assembleSessionConfig(
       "Explore",

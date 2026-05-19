@@ -10,7 +10,6 @@
  * before invoking this function, keeping the assembler synchronous.
  */
 
-import type { Model } from "@earendil-works/pi-ai";
 import {
   getAgentConfig,
   getConfig,
@@ -29,6 +28,11 @@ import type { EnvInfo, SubagentType, ThinkingLevel } from "./types.js";
 /**
  * Narrow context the assembler reads from the parent session.
  * Tests construct plain objects satisfying this interface — no SDK mocking needed.
+ *
+ * Models are treated as opaque handles: the assembler never inspects their
+ * internals, only passes them through. `getAvailable` returns just enough
+ * structural information ({ provider, id }) for the availability check in
+ * `resolveDefaultModel`.
  */
 export interface AssemblerContext {
   /** Parent working directory (overridable via options.cwd). */
@@ -36,11 +40,11 @@ export interface AssemblerContext {
   /** Parent's effective system prompt (for append-mode agents). */
   parentSystemPrompt: string;
   /** Parent's current model instance (fallback when agent config has no model). */
-  parentModel?: Model<any>;
+  parentModel?: unknown;
   /** Model registry for resolving config.model strings. */
   modelRegistry: {
-    find(provider: string, modelId: string): Model<any> | undefined;
-    getAvailable?(): Model<any>[];
+    find(provider: string, modelId: string): unknown;
+    getAvailable?(): Array<{ provider: string; id: string }>;
   };
 }
 
@@ -54,7 +58,7 @@ export interface AssemblerOptions {
   /** When true, forces extensions and skills to false. */
   isolated?: boolean;
   /** Explicit model override — wins over agentConfig.model and parent model. */
-  model?: Model<any>;
+  model?: unknown;
   /** Explicit thinking level — wins over agentConfig.thinking. */
   thinkingLevel?: ThinkingLevel;
 }
@@ -75,8 +79,12 @@ export interface SessionConfig {
   disallowedSet: Set<string> | undefined;
   /** Resolved extensions setting for resource loader and tool filtering. */
   extensions: boolean | string[];
-  /** Resolved model instance (undefined → use parent model as passed to SDK). */
-  model: Model<any> | undefined;
+  /**
+   * Resolved model instance (undefined → use parent model as passed to SDK).
+   * Opaque handle — the assembler passes it through without inspection.
+   * Caller casts to the SDK’s Model<any> at the session-creation boundary.
+   */
+  model: unknown;
   /** Resolved thinking level (undefined → inherit from session). */
   thinkingLevel: ThinkingLevel | undefined;
   /** Whether to skip skill loading in the resource loader (`noSkills` flag). */
@@ -97,10 +105,10 @@ export interface SessionConfig {
  * that model instead.
  */
 function resolveDefaultModel(
-  parentModel: Model<any> | undefined,
+  parentModel: unknown,
   registry: AssemblerContext["modelRegistry"],
   configModel?: string,
-): Model<any> | undefined {
+): unknown {
   if (configModel) {
     const slashIdx = configModel.indexOf("/");
     if (slashIdx !== -1) {
@@ -109,7 +117,7 @@ function resolveDefaultModel(
 
       const available = registry.getAvailable?.();
       const availableKeys = available
-        ? new Set(available.map((m: any) => `${m.provider}/${m.id}`))
+        ? new Set(available.map((m) => `${m.provider}/${m.id}`))
         : undefined;
       const isAvailable = (p: string, id: string) =>
         !availableKeys || availableKeys.has(`${p}/${id}`);

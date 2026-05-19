@@ -229,7 +229,7 @@ export async function runAgent(
     sessionManager: SessionManager.inMemory(cfg.effectiveCwd),
     settingsManager: SettingsManager.create(cfg.effectiveCwd, agentDir),
     modelRegistry: ctx.modelRegistry,
-    model: cfg.model,
+    model: cfg.model as Model<any> | undefined,
     tools: cfg.toolNames,
     resourceLoader: loader,
   };
