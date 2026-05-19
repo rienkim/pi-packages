@@ -356,10 +356,11 @@ Wire `api-adapter.ts` to wrap `AgentManager` and call
 `publishSubagentsAPI()` at extension init. Resolve model strings inside
 the adapter (fixing upstream [tintinweb/pi-subagents#60]).
 
-### Phase 5: Decompose `index.ts`
+### Phase 5: Decompose `index.ts` ✓ (done — issue #54)
 
-Extract tools, notifications, activity tracking, and the `/agents` command
-into separate modules per the decomposition above.
+Extracted tools, notifications, activity tracking, and the `/agents` command
+into separate modules.
+`src/index.ts` shrank from ~1,619 lines to ~265 lines.
 
 ### Phase 6 (future): Extract UI to `@earendil-works/pi-subagents-ui`
 
@@ -368,19 +369,125 @@ command, notifications, and activity tracking to a separate extension that
 consumes `SubagentsAPI` + lifecycle events. This phase is deferred until
 the API boundary is proven stable in production.
 
+## Structural refactoring roadmap (post-#54)
+
+The Issue #54 decomposition created focused modules but left several
+structural cleanup opportunities on the table.
+The following issues track the work needed to bring `pi-subagents` to the
+same level of testability and composability as `pi-permission-system`.
+
+### Phase 1: Foundation
+
+These three issues are independent of each other and can land in any order.
+Together they eliminate module-scope mutable state and create a testable
+functional core.
+
+1. **gotgenes/pi-packages#69** — Create `SubagentRuntime`
+   - Move `defaultMaxTurns`, `graceTurns`, `agentActivity`, `currentCtx`,
+     and widget references out of closure/module scope into a single
+     factory-constructed object.
+   - This unblocks handler extraction (Issue #70) by giving handlers a
+     concrete deps bag instead of closure variables.
+
+2. **gotgenes/pi-packages#71** — Extract pure agent-session assembler from
+   `agent-runner.ts`
+   - Split `runAgent()` into a pure configuration assembler
+     (~200 lines) and an IO shell (~200 lines).
+   - The assembler becomes independently testable without mocking the Pi SDK.
+
+3. **gotgenes/pi-packages#76** — Inject `cwd` into `AgentManager`
+   - Replace the `process.cwd()` call in `dispose()` with a constructor
+     parameter.
+   - A small, mechanical prerequisite for Issue #72.
+
+### Phase 2: Core decomposition
+
+These build on Phase 1 and should land after it.
+
+4. **gotgenes/pi-packages#72** — Dependency-inject `AgentManager`'s
+   collaborators
+   - Introduce `AgentRunner` and `WorktreeManager` interfaces and inject
+     them into `AgentManager`.
+   - Removes direct imports of `agent-runner.ts` and `worktree.ts` from
+     `agent-manager.ts`.
+
+5. **gotgenes/pi-packages#70** — Extract event handlers into
+   `src/handlers/`
+   - Move the four inline lambdas (`session_start`, `session_before_switch`,
+     `session_shutdown`, `tool_execution_start`) into named handler modules.
+   - Requires Issue #69 because handlers need the `SubagentRuntime` as their
+     deps bag.
+   - Target: `src/index.ts` ≤150 lines.
+
+### Phase 3: Interface polish
+
+Small cleanups that are safest after the structural changes settle.
+
+6. **gotgenes/pi-packages#66** — Replace `as any` casts with proper SDK
+   types
+   - Type-only change in the tool/menu factory dep interfaces.
+   - Best done after Issues #69 and #70 when the interfaces are stable.
+
+7. **gotgenes/pi-packages#77** — Add `projectAgentsDir` to `AgentMenuDeps`
+   - Remove the inline `process.cwd()` lambda from the menu handler.
+
+### Phase 4: Features and cross-cutting concerns
+
+8. **gotgenes/pi-packages#61** — Port transcript logging to Pi's official
+   JSONL session format
+   - Feature work that should happen after structural refactoring is
+     complete so the output-file subsystem has a stable home.
+
+9. **gotgenes/pi-packages#22** — Parent-session resolution for
+   `nicobailon/pi-subagents` children
+   - Cross-extension issue that spans `pi-permission-system` and
+     `pi-subagents`.
+   - Requires coordination on env-var conventions.
+   - Not blocked by the structural refactor but logically separate from it.
+
+### Dependency graph
+
+```text
+#69 (SubagentRuntime) ──┬──► #70 (handler extraction)
+                        │
+                        └──► #72 (AgentManager DI) ──(optional)──► #70
+
+#71 (pure assembler) ─────(independent)────► (can land any time)
+
+#76 (cwd injection) ──────► #72
+
+#66 (type casts) ◄────────(after structural changes settle)
+#77 (projectAgentsDir) ◄──(after #66 or parallel)
+
+#61 (transcript format) ◄─(after structural refactor)
+#22 (parent session) ◄────(cross-extension, independent)
+```
+
+### Recommended order
+
+The recommended sequence is:
+
+```text
+#69 → #71 → #76 → #72 → #70 → #66 → #77 → #61
+```
+
+Issue #22 is a parallel cross-extension track and does not gate the
+structural work.
+
 ## Relationship with upstream
 
-This fork ([earendil-works/pi-subagents]) is now a **hard fork** of
-[tintinweb/pi-subagents]. The decomposition diverges materially from
-upstream's direction.
+This fork ([earendil-works/pi-subagents]) is now a hard fork of
+[tintinweb/pi-subagents].
+The decomposition diverges materially from upstream's direction.
 
-The three upstream PRs (#71, #72, #73) remain open. If they land, upstream
-gains the peer-dep fix and the two RepOne patches. This fork continues
-independently regardless.
+The three upstream PRs (#71, #72, #73) remain open.
+If they land, upstream gains the peer-dep fix and the two RepOne patches.
+This fork continues independently regardless.
 
 Upstream fixes and ideas are cherry-picked when they align with this
-fork's scope. The upstream test suite is run periodically as a regression
-canary for the agent-runner core.
+fork's scope.
+The upstream test suite is run periodically as a regression canary for the
+agent-runner core.
 
 [earendil-works/pi#4207]: https://github.com/earendil-works/pi/issues/4207
 [earendil-works/pi-subagents]: https://github.com/earendil-works/pi-subagents
