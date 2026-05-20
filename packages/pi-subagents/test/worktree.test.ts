@@ -3,7 +3,7 @@ import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { cleanupWorktree, createWorktree, pruneWorktrees } from "../src/worktree.js";
+import { cleanupWorktree, createWorktree, GitWorktreeManager, pruneWorktrees } from "../src/worktree.js";
 
 /**
  * Helper: create a temporary git repo with an initial commit.
@@ -187,6 +187,43 @@ describe("worktree", () => {
       } finally {
         rmSync(nonGit, { recursive: true, force: true });
       }
+    });
+  });
+
+  describe("GitWorktreeManager", () => {
+    it("create() delegates to createWorktree with captured cwd", () => {
+      const manager = new GitWorktreeManager(repoDir);
+      const wt = manager.create("gm-id-1");
+      expect(wt).toBeDefined();
+      expect(existsSync(wt!.path)).toBe(true);
+      expect(wt!.branch).toBe("pi-agent-gm-id-1");
+      // Cleanup
+      try { execFileSync("git", ["worktree", "remove", "--force", wt!.path], { cwd: repoDir, stdio: "pipe" }); } catch { /* ignore */ }
+    });
+
+    it("cleanup() with no changes delegates to cleanupWorktree with captured cwd", () => {
+      const manager = new GitWorktreeManager(repoDir);
+      const wt = manager.create("gm-clean-1")!;
+      expect(wt).toBeDefined();
+      const result = manager.cleanup(wt, "test cleanup");
+      expect(result.hasChanges).toBe(false);
+    });
+
+    it("cleanup() with changes delegates to cleanupWorktree with captured cwd", () => {
+      const manager = new GitWorktreeManager(repoDir);
+      const wt = manager.create("gm-dirty-1")!;
+      expect(wt).toBeDefined();
+      writeFileSync(join(wt.path, "new-file.txt"), "manager wrote this");
+      const result = manager.cleanup(wt, "added new file");
+      expect(result.hasChanges).toBe(true);
+      expect(result.branch).toContain("pi-agent-gm-dirty-1");
+      // Cleanup branch
+      try { execFileSync("git", ["branch", "-D", result.branch!], { cwd: repoDir, stdio: "pipe" }); } catch { /* ignore */ }
+    });
+
+    it("prune() delegates to pruneWorktrees with captured cwd", () => {
+      const manager = new GitWorktreeManager(repoDir);
+      expect(() => manager.prune()).not.toThrow();
     });
   });
 });
