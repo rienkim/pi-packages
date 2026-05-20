@@ -9,10 +9,11 @@
 import { randomUUID } from "node:crypto";
 import type { Model } from "@earendil-works/pi-ai";
 import type { AgentSession, ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
+import { AgentRecord } from "./agent-record.js";
 import type { AgentRunner, ToolActivity } from "./agent-runner.js";
 import { debugLog } from "./debug.js";
 import type { RunConfig } from "./runtime.js";
-import type { AgentInvocation, AgentRecord, IsolationMode, SubagentType, ThinkingLevel } from "./types.js";
+import type { AgentInvocation, IsolationMode, SubagentType, ThinkingLevel } from "./types.js";
 import { addUsage } from "./usage.js";
 import type { WorktreeManager } from "./worktree.js";
 
@@ -133,18 +134,15 @@ export class AgentManager {
   ): string {
     const id = randomUUID().slice(0, 17);
     const abortController = new AbortController();
-    const record: AgentRecord = {
+    const record = new AgentRecord({
       id,
       type,
       description: options.description,
       status: options.isBackground ? "queued" : "running",
-      toolUses: 0,
       startedAt: Date.now(),
       abortController,
-      lifetimeUsage: { input: 0, output: 0, cacheWrite: 0 },
-      compactionCount: 0,
       invocation: options.invocation,
-    };
+    });
     this.agents.set(id, record);
 
     const args: SpawnArgs = { pi, ctx, type, prompt, options };
