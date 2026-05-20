@@ -52,7 +52,7 @@ function makeCtx(overrides: Record<string, unknown> = {}) {
     modelRegistry: {},
     cwd: "/test",
     ui: { fake: true },
-    sessionManager: { getSessionId: () => "session-1" },
+    sessionManager: { getSessionId: () => "session-1", getSessionFile: () => "/sessions/parent.jsonl" },
     ...overrides,
   };
 }

@@ -229,6 +229,10 @@ export class AgentManager {
       },
       onSessionCreated: (session) => {
         record.session = session;
+        // Capture the session file path early so it's available for display
+        // before the run completes (e.g. in background agent status messages).
+        const file = session.sessionManager?.getSessionFile?.();
+        if (file) record.outputFile = file;
         // Flush any steers that arrived before the session was ready
         if (record.pendingSteers?.length) {
           for (const msg of record.pendingSteers) {
@@ -239,7 +243,7 @@ export class AgentManager {
         options.onSessionCreated?.(session);
       },
     })
-      .then(({ responseText, session, aborted, steered }) => {
+      .then(({ responseText, session, aborted, steered, sessionFile }) => {
         // Don't overwrite status if externally stopped via abort()
         if (record.status !== "stopped") {
           record.status = aborted ? "aborted" : steered ? "steered" : "completed";
@@ -247,14 +251,9 @@ export class AgentManager {
         record.result = responseText;
         record.session = session;
         record.completedAt ??= Date.now();
+        if (sessionFile) record.outputFile = sessionFile;
 
         detach();
-
-        // Final flush of streaming output file
-        if (record.outputCleanup) {
-          try { record.outputCleanup(); } catch (err) { debugLog("outputCleanup", err); }
-          record.outputCleanup = undefined;
-        }
 
         // Clean up worktree if used
         if (record.worktree) {
@@ -283,11 +282,7 @@ export class AgentManager {
 
         detach();
 
-        // Final flush of streaming output file on error
-        if (record.outputCleanup) {
-          try { record.outputCleanup(); } catch (err) { debugLog("outputCleanup on error", err); }
-          record.outputCleanup = undefined;
-        }
+
 
         // Best-effort worktree cleanup on error
         if (record.worktree) {

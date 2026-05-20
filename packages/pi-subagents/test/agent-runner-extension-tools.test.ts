@@ -20,13 +20,17 @@ const {
   createAgentSession,
   defaultResourceLoaderCtor,
   getAgentDir,
-  sessionManagerInMemory,
+  sessionManagerCreate,
   settingsManagerCreate,
 } = vi.hoisted(() => ({
   createAgentSession: vi.fn(),
   defaultResourceLoaderCtor: vi.fn(),
   getAgentDir: vi.fn(() => "/mock/agent-dir"),
-  sessionManagerInMemory: vi.fn(() => ({ kind: "memory-session-manager" })),
+  sessionManagerCreate: vi.fn(() => ({
+    kind: "persisted-session-manager",
+    newSession: vi.fn(),
+    getSessionFile: vi.fn(() => "/sessions/child.jsonl"),
+  })),
   settingsManagerCreate: vi.fn(() => ({ kind: "settings-manager" })),
 }));
 
@@ -40,7 +44,7 @@ vi.mock("@earendil-works/pi-coding-agent", () => ({
     async reload() {}
   },
   getAgentDir,
-  SessionManager: { inMemory: sessionManagerInMemory },
+  SessionManager: { create: sessionManagerCreate },
   SettingsManager: { create: settingsManagerCreate },
 }));
 
@@ -86,6 +90,10 @@ vi.mock("../src/memory.js", () => ({
 
 vi.mock("../src/skill-loader.js", () => ({
   preloadSkills: vi.fn(() => []),
+}));
+
+vi.mock("../src/session-dir.js", () => ({
+  deriveSubagentSessionDir: vi.fn(() => "/mock/session-dir/tasks"),
 }));
 
 import { runAgent } from "../src/agent-runner.js";
@@ -136,7 +144,12 @@ beforeEach(() => {
   createAgentSession.mockReset();
   defaultResourceLoaderCtor.mockClear();
   getAgentDir.mockClear();
-  sessionManagerInMemory.mockClear();
+  sessionManagerCreate.mockClear();
+  sessionManagerCreate.mockReturnValue({
+    kind: "persisted-session-manager",
+    newSession: vi.fn(),
+    getSessionFile: vi.fn(() => "/sessions/child.jsonl"),
+  });
   settingsManagerCreate.mockClear();
   // Reset agent config to defaults
   agentConfigMock.current = {

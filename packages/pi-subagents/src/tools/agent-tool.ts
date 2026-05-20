@@ -6,7 +6,7 @@ import { normalizeMaxTurns } from "../agent-runner.js";
 import { resolveAgentConfig, resolveType } from "../agent-types.js";
 import { resolveAgentInvocationConfig } from "../invocation-config.js";
 import { resolveInvocationModel } from "../model-resolver.js";
-import { createOutputFilePath, streamToOutputFile, writeInitialEntry } from "../output-file.js";
+
 import type { AgentInvocation, AgentRecord, SubagentType } from "../types.js";
 import {
   type AgentActivity,
@@ -454,19 +454,12 @@ Guidelines:
         const { state: bgState, callbacks: bgCallbacks } =
           createActivityTracker(effectiveMaxTurns);
 
-        // Wrap onSessionCreated to wire output file streaming.
         let id: string;
-        const origBgOnSession = bgCallbacks.onSessionCreated;
-        bgCallbacks.onSessionCreated = (session: any) => {
-          origBgOnSession(session);
-          const rec = deps.manager.getRecord(id);
-          if (rec?.outputFile) {
-            rec.outputCleanup = streamToOutputFile(session, rec.outputFile, id, ctx.cwd);
-          }
-        };
 
         try {
           id = deps.manager.spawn(ctx, subagentType, params.prompt as string, {
+            parentSessionFile: ctx.sessionManager.getSessionFile(),
+            parentSessionId: ctx.sessionManager.getSessionId(),
             description: params.description as string,
             model,
             maxTurns: effectiveMaxTurns,
@@ -482,16 +475,9 @@ Guidelines:
           return textResult(err instanceof Error ? err.message : String(err));
         }
 
-        // Set output file synchronously after spawn
         const record = deps.manager.getRecord(id);
         if (record) {
           record.toolCallId = toolCallId;
-          record.outputFile = createOutputFilePath(
-            ctx.cwd,
-            id,
-            ctx.sessionManager.getSessionId(),
-          );
-          writeInitialEntry(record.outputFile, id, params.prompt as string, ctx.cwd);
         }
 
         deps.agentActivity.set(id, bgState);
@@ -596,6 +582,8 @@ Guidelines:
             isolation,
             invocation: agentInvocation,
             signal,
+            parentSessionFile: ctx.sessionManager.getSessionFile(),
+            parentSessionId: ctx.sessionManager.getSessionId(),
             ...fgCallbacks,
           },
         );

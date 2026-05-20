@@ -59,12 +59,6 @@ describe("toSubagentRecord", () => {
     expect(result).not.toHaveProperty("pendingSteers");
   });
 
-  it("strips outputCleanup from the record", () => {
-    const record = { ...baseRecord, outputCleanup: () => {} };
-    const result = toSubagentRecord(record);
-    expect(result).not.toHaveProperty("outputCleanup");
-  });
-
   it("strips resultConsumed, toolCallId, outputFile, worktree, invocation", () => {
     const record = {
       ...baseRecord,

@@ -58,6 +58,7 @@ function makeHeadlessCtx() {
     },
     sessionManager: {
       getSessionId: vi.fn(() => "session-1"),
+      getSessionFile: vi.fn(() => "/sessions/parent.jsonl"),
       getBranch: vi.fn(() => []),
     },
     getSystemPrompt: vi.fn(() => "parent prompt"),
@@ -76,6 +77,7 @@ describe("print mode background notifications", () => {
       session: { dispose: vi.fn() } as any,
       aborted: false,
       steered: false,
+      sessionFile: "/sessions/child.jsonl",
     });
 
     const { pi, tools, handlers } = makePi();

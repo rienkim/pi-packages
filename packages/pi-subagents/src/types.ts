@@ -78,10 +78,8 @@ export interface AgentRecord {
   worktreeResult?: { hasChanges: boolean; branch?: string };
   /** The tool_use_id from the original Agent tool call. */
   toolCallId?: string;
-  /** Path to the streaming output transcript file. */
+  /** Path to the persisted session transcript file. */
   outputFile?: string;
-  /** Cleanup function for the output file stream subscription. */
-  outputCleanup?: () => void;
   /**
    * Lifetime usage breakdown, accumulated via `message_end` events. Survives
    * compaction. Total = input + output + cacheWrite (cacheRead deliberately
