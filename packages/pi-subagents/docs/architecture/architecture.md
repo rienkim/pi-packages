@@ -489,7 +489,7 @@ The `if (record.status !== "stopped")` guards in `.then()` and `.catch()` become
 The three designs are independent and can land in any order.
 The recommended sequence minimizes intermediate churn.
 
-#### Step 1: Record state machine
+#### Step 1: Record state machine ✓ (done — #98, #102)
 
 Extract status-transition methods onto `AgentRecord` (or a `RecordManager` wrapper).
 Purely mechanical — replace scattered field writes with method calls.
@@ -497,7 +497,9 @@ No interface changes for callers.
 
 This is the lowest-risk change and immediately reduces `startAgent()` line count.
 
-#### Step 2: Parent snapshot
+Issue #102 consolidated test `AgentRecord` construction into a shared factory as follow-up.
+
+#### Step 2: Parent snapshot (#99)
 
 Replace `ctx: ExtensionContext` in `SpawnArgs` with a `ParentSnapshot` data object.
 Capture the snapshot in `spawn()` or at the tool call site.
@@ -506,7 +508,7 @@ Remove `pi: ExtensionAPI` from `SpawnArgs` (it is only used to pass to `runner.r
 
 This change narrows the `AgentRunner` interface and eliminates live-reference capture.
 
-#### Step 3: Session-event observation
+#### Step 3: Session-event observation (#100)
 
 Replace the callback-threading pattern with direct session subscriptions.
 AgentManager subscribes to the session after creation to update the record.
