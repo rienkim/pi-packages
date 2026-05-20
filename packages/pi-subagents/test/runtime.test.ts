@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createSubagentRuntime } from "../src/runtime.js";
+import { createSubagentRuntime, SubagentRuntime } from "../src/runtime.js";
 
 describe("createSubagentRuntime", () => {
   it("returns correct defaults", () => {
@@ -55,5 +55,44 @@ describe("createSubagentRuntime", () => {
     const fakeWidget = { update: () => {}, markFinished: () => {}, setUICtx: () => {} };
     runtime.widget = fakeWidget as any;
     expect(runtime.widget).toBe(fakeWidget);
+  });
+});
+
+describe("SubagentRuntime class", () => {
+  it("is a class — instances are created with new", () => {
+    const runtime = new SubagentRuntime();
+    expect(runtime).toBeInstanceOf(SubagentRuntime);
+  });
+
+  it("createSubagentRuntime returns an instance of the class", () => {
+    const runtime = createSubagentRuntime();
+    expect(runtime).toBeInstanceOf(SubagentRuntime);
+  });
+});
+
+describe("SubagentRuntime session-context methods", () => {
+  it("setSessionContext sets currentCtx with pi and ctx", () => {
+    const runtime = createSubagentRuntime();
+    const pi = { sendMessage: () => {} };
+    const ctx = { ui: {} };
+    runtime.setSessionContext(pi, ctx);
+    expect(runtime.currentCtx).toEqual({ pi, ctx });
+  });
+
+  it("clearSessionContext resets currentCtx to undefined", () => {
+    const runtime = createSubagentRuntime();
+    runtime.setSessionContext({}, {});
+    expect(runtime.currentCtx).toBeDefined();
+    runtime.clearSessionContext();
+    expect(runtime.currentCtx).toBeUndefined();
+  });
+
+  it("round-trip: set then clear returns to initial state", () => {
+    const runtime = createSubagentRuntime();
+    expect(runtime.currentCtx).toBeUndefined();
+    runtime.setSessionContext({ id: 1 }, { id: 2 });
+    expect(runtime.currentCtx).toEqual({ pi: { id: 1 }, ctx: { id: 2 } });
+    runtime.clearSessionContext();
+    expect(runtime.currentCtx).toBeUndefined();
   });
 });
