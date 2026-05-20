@@ -11,6 +11,7 @@ import {
   getUserAgentNames,
   isValidType,
   registerAgents,
+  resolveAgentConfig,
   resolveType,
 } from "../src/agent-types.js";
 import type { AgentConfig } from "../src/types.js";
@@ -285,6 +286,62 @@ describe("agent type registry", () => {
     it("returns empty when read already exists", () => {
       const names = getReadOnlyMemoryToolNames(new Set(["read"]));
       expect(names).toHaveLength(0);
+    });
+  });
+
+  describe("resolveAgentConfig", () => {
+    it("returns config for a known enabled type", () => {
+      const config = resolveAgentConfig("Explore");
+      expect(config.name).toBe("Explore");
+      expect(config.description).toBeDefined();
+      expect(config.promptMode).toBe("replace");
+    });
+
+    it("performs case-insensitive lookup", () => {
+      const config = resolveAgentConfig("explore");
+      expect(config.name).toBe("Explore");
+    });
+
+    it("falls back to general-purpose for unknown type", () => {
+      const config = resolveAgentConfig("nonexistent");
+      expect(config.name).toBe("general-purpose");
+      expect(config.description).toBe("General-purpose agent for complex, multi-step tasks");
+    });
+
+    it("falls back to general-purpose for disabled type", () => {
+      registerAgents(new Map([["Plan", makeAgentConfig({
+        name: "Plan",
+        enabled: false,
+      })]]));
+
+      const config = resolveAgentConfig("Plan");
+      expect(config.name).toBe("general-purpose");
+    });
+
+    it("returns absolute fallback when general-purpose is also disabled", () => {
+      registerAgents(new Map([
+        ["general-purpose", makeAgentConfig({ name: "general-purpose", enabled: false })],
+      ]));
+
+      const config = resolveAgentConfig("nonexistent");
+      expect(config.displayName).toBe("Agent");
+      expect(config.description).toBe("General-purpose agent for complex, multi-step tasks");
+      expect(config.extensions).toBe(true);
+      expect(config.skills).toBe(true);
+      expect(config.promptMode).toBe("append");
+      expect(config.builtinToolNames).toEqual(BUILTIN_TOOL_NAMES);
+      expect(config.systemPrompt).toBe("");
+    });
+
+    it("returns user-defined agent config", () => {
+      registerAgents(new Map([["auditor", makeAgentConfig({
+        name: "auditor",
+        description: "Security auditor",
+      })]]));
+
+      const config = resolveAgentConfig("auditor");
+      expect(config.name).toBe("auditor");
+      expect(config.description).toBe("Security auditor");
     });
   });
 });

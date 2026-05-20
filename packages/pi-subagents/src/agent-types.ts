@@ -116,6 +116,33 @@ export function getToolNamesForType(type: string): string[] {
   return names;
 }
 
+/** Resolve agent config with guaranteed non-null return. Falls back: unknown/disabled → general-purpose → absolute fallback. */
+export function resolveAgentConfig(type: string): AgentConfig {
+  const key = resolveKey(type);
+  const config = key ? agents.get(key) : undefined;
+  if (config && config.enabled !== false) {
+    return config;
+  }
+
+  // Fallback to general-purpose
+  const gp = agents.get("general-purpose");
+  if (gp && gp.enabled !== false) {
+    return gp;
+  }
+
+  // Absolute fallback (should never happen in practice)
+  return {
+    name: type,
+    displayName: "Agent",
+    description: "General-purpose agent for complex, multi-step tasks",
+    builtinToolNames: BUILTIN_TOOL_NAMES,
+    extensions: true,
+    skills: true,
+    systemPrompt: "",
+    promptMode: "append",
+  };
+}
+
 /** Get config for a type (case-insensitive, returns a SubagentTypeConfig-compatible object). Falls back to general-purpose. */
 export function getConfig(type: string): {
   displayName: string;
@@ -161,4 +188,3 @@ export function getConfig(type: string): {
     promptMode: "append",
   };
 }
-
