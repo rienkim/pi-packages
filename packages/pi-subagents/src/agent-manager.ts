@@ -9,12 +9,12 @@
 import { randomUUID } from "node:crypto";
 import type { Model } from "@earendil-works/pi-ai";
 import type { AgentSession, ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
-import { resumeAgent, runAgent, type ToolActivity } from "./agent-runner.js";
+import type { AgentRunner, ToolActivity } from "./agent-runner.js";
 import { debugLog } from "./debug.js";
 import type { RunConfig } from "./runtime.js";
 import type { AgentInvocation, AgentRecord, IsolationMode, SubagentType, ThinkingLevel } from "./types.js";
 import { addUsage } from "./usage.js";
-import { cleanupWorktree, createWorktree, pruneWorktrees, } from "./worktree.js";
+import type { WorktreeManager } from "./worktree.js";
 
 export type OnAgentComplete = (record: AgentRecord) => void;
 export type OnAgentStart = (record: AgentRecord) => void;
@@ -23,6 +23,16 @@ export type CompactionInfo = { reason: "manual" | "threshold" | "overflow"; toke
 
 /** Default max concurrent background agents. */
 const DEFAULT_MAX_CONCURRENT = 4;
+
+export interface AgentManagerOptions {
+  runner: AgentRunner;
+  worktrees: WorktreeManager;
+  maxConcurrent?: number;
+  getRunConfig?: () => RunConfig;
+  onStart?: OnAgentStart;
+  onComplete?: OnAgentComplete;
+  onCompact?: OnAgentCompact;
+}
 
 interface SpawnArgs {
   pi: ExtensionAPI;
@@ -72,7 +82,8 @@ export class AgentManager {
   private onComplete?: OnAgentComplete;
   private onStart?: OnAgentStart;
   private onCompact?: OnAgentCompact;
-  private readonly cwd: string;
+  private readonly runner: AgentRunner;
+  private readonly worktrees: WorktreeManager;
   private maxConcurrent: number;
   private getRunConfig?: () => RunConfig;
 
@@ -81,20 +92,14 @@ export class AgentManager {
   /** Number of currently running background agents. */
   private runningBackground = 0;
 
-  constructor(
-    cwd: string,
-    onComplete?: OnAgentComplete,
-    maxConcurrent = DEFAULT_MAX_CONCURRENT,
-    onStart?: OnAgentStart,
-    onCompact?: OnAgentCompact,
-    getRunConfig?: () => RunConfig,
-  ) {
-    this.cwd = cwd;
-    this.onComplete = onComplete;
-    this.onStart = onStart;
-    this.onCompact = onCompact;
-    this.getRunConfig = getRunConfig;
-    this.maxConcurrent = maxConcurrent;
+  constructor(options: AgentManagerOptions) {
+    this.runner = options.runner;
+    this.worktrees = options.worktrees;
+    this.onComplete = options.onComplete;
+    this.onStart = options.onStart;
+    this.onCompact = options.onCompact;
+    this.getRunConfig = options.getRunConfig;
+    this.maxConcurrent = options.maxConcurrent ?? DEFAULT_MAX_CONCURRENT;
     // Cleanup completed agents after 10 minutes (but keep sessions for resume)
     this.cleanupInterval = setInterval(() => this.cleanup(), 60_000);
     this.cleanupInterval.unref();
@@ -164,7 +169,7 @@ export class AgentManager {
     // BEFORE state mutation so a throw doesn't leave the record half-running.
     let worktreeCwd: string | undefined;
     if (options.isolation === "worktree") {
-      const wt = createWorktree(ctx.cwd, id);
+      const wt = this.worktrees.create(id);
       if (!wt) {
         throw new Error(
           'Cannot run with isolation: "worktree" — not a git repo, no commits yet, or `git worktree add` failed. ' +
@@ -190,7 +195,7 @@ export class AgentManager {
     const detach = () => { detachParentSignal?.(); detachParentSignal = undefined; };
 
     const runConfig = this.getRunConfig?.();
-    const promise = runAgent(ctx, type, prompt, {
+    const promise = this.runner.run(ctx, type, prompt, {
       pi,
       model: options.model,
       maxTurns: options.maxTurns,
@@ -247,7 +252,7 @@ export class AgentManager {
 
         // Clean up worktree if used
         if (record.worktree) {
-          const wtResult = cleanupWorktree(ctx.cwd, record.worktree, options.description);
+          const wtResult = this.worktrees.cleanup(record.worktree, options.description);
           record.worktreeResult = wtResult;
           if (wtResult.hasChanges && wtResult.branch) {
             record.result = (record.result ?? "") +
@@ -281,7 +286,7 @@ export class AgentManager {
         // Best-effort worktree cleanup on error
         if (record.worktree) {
           try {
-            const wtResult = cleanupWorktree(ctx.cwd, record.worktree, options.description);
+            const wtResult = this.worktrees.cleanup(record.worktree, options.description);
             record.worktreeResult = wtResult;
           } catch (err) { debugLog("cleanupWorktree on agent error", err); }
         }
@@ -351,7 +356,7 @@ export class AgentManager {
     record.error = undefined;
 
     try {
-      const responseText = await resumeAgent(record.session, prompt, {
+      const responseText = await this.runner.resume(record.session, prompt, {
         onToolActivity: (activity) => {
           if (activity.type === "end") record.toolUses++;
         },
@@ -488,6 +493,6 @@ export class AgentManager {
     }
     this.agents.clear();
     // Prune any orphaned git worktrees (crash recovery)
-    try { pruneWorktrees(this.cwd); } catch (err) { debugLog("pruneWorktrees on dispose", err); }
+    try { this.worktrees.prune(); } catch (err) { debugLog("pruneWorktrees on dispose", err); }
   }
 }

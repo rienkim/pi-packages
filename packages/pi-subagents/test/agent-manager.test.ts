@@ -1,52 +1,49 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AgentManager, type OnAgentCompact, type OnAgentComplete, type OnAgentStart } from "../src/agent-manager.js";
+import type { AgentRunner, ResumeOptions } from "../src/agent-runner.js";
 import type { RunConfig } from "../src/runtime.js";
 import type { AgentRecord } from "../src/types.js";
-
-vi.mock("../src/agent-runner.js", () => ({
-  runAgent: vi.fn(),
-  resumeAgent: vi.fn(),
-}));
-
-vi.mock("../src/worktree.js", () => ({
-  createWorktree: vi.fn(),
-  cleanupWorktree: vi.fn(() => ({ hasChanges: false })),
-  pruneWorktrees: vi.fn(),
-}));
-
-import { runAgent } from "../src/agent-runner.js";
-import { pruneWorktrees } from "../src/worktree.js";
+import type { WorktreeManager } from "../src/worktree.js";
 
 const mockPi = {} as any;
 const mockCtx = { cwd: "/tmp" } as any;
 
 const mockSession = () => ({ dispose: vi.fn() } as any);
 
-const resolvedRun = () =>
-  vi.mocked(runAgent).mockResolvedValue({
-    responseText: "done",
-    session: mockSession(),
-    aborted: false,
-    steered: false,
-  });
-
-/** Test helper: construct an AgentManager with sensible defaults. */
+/** Test helper: construct an AgentManager with injected stubs. */
 function createManager(overrides?: {
+  runner?: AgentRunner;
+  worktrees?: WorktreeManager;
   onComplete?: OnAgentComplete;
   onStart?: OnAgentStart;
   onCompact?: OnAgentCompact;
   maxConcurrent?: number;
   getRunConfig?: () => RunConfig;
 }) {
-  const manager = new AgentManager(
-    "/test-cwd",
-    overrides?.onComplete,
-    overrides?.maxConcurrent,
-    overrides?.onStart,
-    overrides?.onCompact,
-    overrides?.getRunConfig,
-  );
-  return { manager };
+  const runner: AgentRunner = overrides?.runner ?? {
+    run: vi.fn().mockResolvedValue({
+      responseText: "done",
+      session: mockSession(),
+      aborted: false,
+      steered: false,
+    }),
+    resume: vi.fn().mockResolvedValue("resumed"),
+  };
+  const worktrees: WorktreeManager = overrides?.worktrees ?? {
+    create: vi.fn(),
+    cleanup: vi.fn(() => ({ hasChanges: false })),
+    prune: vi.fn(),
+  };
+  const manager = new AgentManager({
+    runner,
+    worktrees,
+    onComplete: overrides?.onComplete,
+    onStart: overrides?.onStart,
+    onCompact: overrides?.onCompact,
+    maxConcurrent: overrides?.maxConcurrent,
+    getRunConfig: overrides?.getRunConfig,
+  });
+  return { manager, runner, worktrees };
 }
 
 describe("AgentManager — Bug 1 race condition (resultConsumed vs onComplete)", () => {
@@ -61,7 +58,6 @@ describe("AgentManager — Bug 1 race condition (resultConsumed vs onComplete)",
     ({ manager } = createManager({ onComplete: (r) => {
       seenConsumed = r.resultConsumed;
     } }));
-    resolvedRun();
 
     const id = manager.spawn(mockPi, mockCtx, "general-purpose", "test", {
       description: "test",
@@ -82,7 +78,6 @@ describe("AgentManager — Bug 1 race condition (resultConsumed vs onComplete)",
     ({ manager } = createManager({ onComplete: (r) => {
       seenConsumed = r.resultConsumed;
     } }));
-    resolvedRun();
 
     const id = manager.spawn(mockPi, mockCtx, "general-purpose", "test", {
       description: "test",
@@ -102,7 +97,6 @@ describe("AgentManager — Bug 1 race condition (resultConsumed vs onComplete)",
     ({ manager } = createManager({ onComplete: (r) => {
       completedRecord = r;
     } }));
-    resolvedRun();
 
     const id = manager.spawn(mockPi, mockCtx, "general-purpose", "test", {
       description: "test",
@@ -119,7 +113,6 @@ describe("AgentManager — Bug 1 race condition (resultConsumed vs onComplete)",
     ({ manager } = createManager({ onComplete: () => {
       onCompleteCalled = true;
     } }));
-    resolvedRun();
 
     await manager.spawnAndWait(mockPi, mockCtx, "general-purpose", "test", {
       description: "test",
@@ -140,7 +133,6 @@ describe("AgentManager — completion callbacks", () => {
     ({ manager } = createManager({ onComplete: () => {
       throw new Error("stale extension context");
     } }));
-    resolvedRun();
 
     const id = manager.spawn(mockPi, mockCtx, "general-purpose", "test", {
       description: "test",
@@ -175,7 +167,6 @@ describe("AgentManager — Bug 3 clearCompleted", () => {
 
   it("clearCompleted removes completed records", async () => {
     ({ manager } = createManager());
-    resolvedRun();
 
     const id = manager.spawn(mockPi, mockCtx, "general-purpose", "test", {
       description: "test",
@@ -189,13 +180,12 @@ describe("AgentManager — Bug 3 clearCompleted", () => {
   });
 
   it("clearCompleted does not remove running or queued agents", async () => {
-    // Use maxConcurrent=1 to keep second agent queued
-    ({ manager } = createManager({ maxConcurrent: 1 }));
-
-    // Mock runAgent to never resolve (keeps agent "running")
-    vi.mocked(runAgent).mockImplementation(
-      () => new Promise(() => {}), // hangs forever
-    );
+    // Use maxConcurrent=1 to keep second agent queued; runner never resolves
+    const runner: AgentRunner = {
+      run: vi.fn().mockImplementation(() => new Promise(() => {})),
+      resume: vi.fn(),
+    };
+    ({ manager } = createManager({ maxConcurrent: 1, runner }));
 
     const id1 = manager.spawn(mockPi, mockCtx, "general-purpose", "test1", {
       description: "running agent",
@@ -222,15 +212,18 @@ describe("AgentManager — Bug 3 clearCompleted", () => {
   });
 
   it("clearCompleted calls dispose on sessions of removed records", async () => {
-    ({ manager } = createManager());
     const disposeSpy = vi.fn();
     const sess = { dispose: disposeSpy };
-    vi.mocked(runAgent).mockResolvedValue({
-      responseText: "done",
-      session: sess as any,
-      aborted: false,
-      steered: false,
-    });
+    const runner: AgentRunner = {
+      run: vi.fn().mockResolvedValue({
+        responseText: "done",
+        session: sess as any,
+        aborted: false,
+        steered: false,
+      }),
+      resume: vi.fn(),
+    };
+    ({ manager } = createManager({ runner }));
 
     const id = manager.spawn(mockPi, mockCtx, "general-purpose", "test", {
       description: "test",
@@ -244,8 +237,11 @@ describe("AgentManager — Bug 3 clearCompleted", () => {
   });
 
   it("clearCompleted removes error and stopped records", async () => {
-    ({ manager } = createManager());
-    vi.mocked(runAgent).mockRejectedValue(new Error("boom"));
+    const runner: AgentRunner = {
+      run: vi.fn().mockRejectedValue(new Error("boom")),
+      resume: vi.fn(),
+    };
+    ({ manager } = createManager({ runner }));
 
     const id = manager.spawn(mockPi, mockCtx, "general-purpose", "test", {
       description: "test",
@@ -269,9 +265,12 @@ describe("AgentManager — lifetime usage + compaction count are eagerly initial
   });
 
   it("spawn initializes lifetimeUsage to zeros and compactionCount to 0", () => {
-    ({ manager } = createManager());
-    // Don't resolve the run — we just want to inspect the record at spawn time.
-    vi.mocked(runAgent).mockImplementation(() => new Promise(() => {}));
+    // Runner never resolves — we just want to inspect the record at spawn time.
+    const runner: AgentRunner = {
+      run: vi.fn().mockImplementation(() => new Promise(() => {})),
+      resume: vi.fn(),
+    };
+    ({ manager } = createManager({ runner }));
 
     const id = manager.spawn(mockPi, mockCtx, "general-purpose", "test", {
       description: "test",
@@ -286,17 +285,18 @@ describe("AgentManager — lifetime usage + compaction count are eagerly initial
   });
 
   it("onAssistantUsage from runAgent accumulates into record.lifetimeUsage", async () => {
-    ({ manager } = createManager());
-
-    // Capture the options passed to runAgent so we can drive callbacks
+    // Drive callbacks inside the runner to simulate assistant usage events
     let captured: any;
-    vi.mocked(runAgent).mockImplementation(async (_ctx, _type, _prompt, opts: any) => {
-      captured = opts;
-      // Two assistant messages with usage
-      opts.onAssistantUsage?.({ input: 100, output: 50, cacheWrite: 10 });
-      opts.onAssistantUsage?.({ input: 200, output: 80, cacheWrite: 20 });
-      return { responseText: "done", session: mockSession(), aborted: false, steered: false };
-    });
+    const runner: AgentRunner = {
+      run: vi.fn().mockImplementation(async (_ctx: any, _type: any, _prompt: any, opts: any) => {
+        captured = opts;
+        opts.onAssistantUsage?.({ input: 100, output: 50, cacheWrite: 10 });
+        opts.onAssistantUsage?.({ input: 200, output: 80, cacheWrite: 20 });
+        return { responseText: "done", session: mockSession(), aborted: false, steered: false };
+      }),
+      resume: vi.fn(),
+    };
+    ({ manager } = createManager({ runner }));
 
     const id = manager.spawn(mockPi, mockCtx, "general-purpose", "test", {
       description: "test",
@@ -313,15 +313,18 @@ describe("AgentManager — lifetime usage + compaction count are eagerly initial
   it("onCompaction from runAgent increments record.compactionCount", async () => {
     const compactSeen: any[] = [];
 
-    vi.mocked(runAgent).mockImplementation(async (_ctx, _type, _prompt, opts: any) => {
-      // Compaction fires while the agent is still running — the record passed to
-      // onCompact should reflect the just-incremented count.
-      opts.onCompaction?.({ reason: "threshold", tokensBefore: 12345 });
-      opts.onCompaction?.({ reason: "manual", tokensBefore: 22222 });
-      return { responseText: "done", session: mockSession(), aborted: false, steered: false };
-    });
+    const runner: AgentRunner = {
+      run: vi.fn().mockImplementation(async (_ctx: any, _type: any, _prompt: any, opts: any) => {
+        // Compaction fires while the agent is still running — the record passed to
+        // onCompact should reflect the just-incremented count.
+        opts.onCompaction?.({ reason: "threshold", tokensBefore: 12345 });
+        opts.onCompaction?.({ reason: "manual", tokensBefore: 22222 });
+        return { responseText: "done", session: mockSession(), aborted: false, steered: false };
+      }),
+      resume: vi.fn(),
+    };
 
-    ({ manager } = createManager({ onCompact: (record, info) => {
+    ({ manager } = createManager({ runner, onCompact: (record, info) => {
       compactSeen.push({ count: record.compactionCount, reason: info.reason });
     } }));
 
@@ -339,16 +342,22 @@ describe("AgentManager — lifetime usage + compaction count are eagerly initial
   });
 
   it("resume() also accumulates usage and increments compactions on the same record", async () => {
-    ({ manager } = createManager());
-
     // First, spawn with a session that resume can latch onto
     const session = { ...mockSession() };
-    vi.mocked(runAgent).mockResolvedValue({
-      responseText: "first",
-      session: session as any,
-      aborted: false,
-      steered: false,
-    });
+    const runner: AgentRunner = {
+      run: vi.fn().mockResolvedValue({
+        responseText: "first",
+        session: session as any,
+        aborted: false,
+        steered: false,
+      }),
+      resume: vi.fn().mockImplementation(async (_session: any, _prompt: any, opts?: ResumeOptions) => {
+        opts?.onAssistantUsage?.({ input: 70, output: 30, cacheWrite: 5 });
+        opts?.onCompaction?.({ reason: "overflow", tokensBefore: 999 });
+        return "second";
+      }),
+    };
+    ({ manager } = createManager({ runner }));
 
     const id = manager.spawn(mockPi, mockCtx, "general-purpose", "test", {
       description: "test",
@@ -359,14 +368,6 @@ describe("AgentManager — lifetime usage + compaction count are eagerly initial
     // Pre-resume: lifetimeUsage from spawn was zero (mock didn't call onAssistantUsage)
     expect(manager.getRecord(id)!.lifetimeUsage).toEqual({ input: 0, output: 0, cacheWrite: 0 });
     expect(manager.getRecord(id)!.compactionCount).toBe(0);
-
-    // Now resume — drive callbacks via the mocked resumeAgent
-    const { resumeAgent: resumeMock } = await import("../src/agent-runner.js");
-    vi.mocked(resumeMock).mockImplementation(async (_session, _prompt, opts: any) => {
-      opts.onAssistantUsage?.({ input: 70, output: 30, cacheWrite: 5 });
-      opts.onCompaction?.({ reason: "overflow", tokensBefore: 999 });
-      return "second";
-    });
 
     await manager.resume(id, "more");
 
@@ -387,46 +388,43 @@ describe("AgentManager — getRunConfig threads defaultMaxTurns and graceTurns i
 
   it("passes defaultMaxTurns and graceTurns from getRunConfig to runAgent", async () => {
     const getRunConfig = vi.fn(() => ({ defaultMaxTurns: 10, graceTurns: 3 }));
-    ({ manager } = createManager({ getRunConfig }));
-    resolvedRun();
-    vi.mocked(runAgent).mockClear();
+    let runner: AgentRunner;
+    ({ manager, runner } = createManager({ getRunConfig }));
 
     manager.spawn(mockPi, mockCtx, "general-purpose", "test", {
       description: "test",
       isBackground: true,
     });
 
-    await vi.waitFor(() => expect(vi.mocked(runAgent)).toHaveBeenCalled());
+    await vi.waitFor(() => expect(runner.run).toHaveBeenCalled());
 
-    const runOpts = vi.mocked(runAgent).mock.calls[0][3];
+    const runOpts = vi.mocked(runner.run).mock.calls[0][3];
     expect(runOpts.defaultMaxTurns).toBe(10);
     expect(runOpts.graceTurns).toBe(3);
   });
 
   it("omits defaultMaxTurns and graceTurns from runAgent when no getRunConfig is provided", async () => {
-    ({ manager } = createManager());
-    resolvedRun();
-    vi.mocked(runAgent).mockClear();
+    let runner: AgentRunner;
+    ({ manager, runner } = createManager());
 
     manager.spawn(mockPi, mockCtx, "general-purpose", "test", {
       description: "test",
       isBackground: true,
     });
 
-    await vi.waitFor(() => expect(vi.mocked(runAgent)).toHaveBeenCalled());
+    await vi.waitFor(() => expect(runner.run).toHaveBeenCalled());
 
-    const runOpts = vi.mocked(runAgent).mock.calls[0][3];
+    const runOpts = vi.mocked(runner.run).mock.calls[0][3];
     expect(runOpts.defaultMaxTurns).toBeUndefined();
     expect(runOpts.graceTurns).toBeUndefined();
   });
 });
 
-describe("AgentManager — dispose uses injected cwd", () => {
-  it("calls pruneWorktrees with the cwd passed to the constructor", () => {
-    const { manager } = createManager();
-    vi.mocked(pruneWorktrees).mockClear();
+describe("AgentManager — dispose calls worktrees.prune", () => {
+  it("calls worktrees.prune on dispose", () => {
+    const { manager, worktrees } = createManager();
     manager.dispose();
-    expect(vi.mocked(pruneWorktrees)).toHaveBeenCalledWith("/test-cwd");
+    expect(worktrees.prune).toHaveBeenCalledOnce();
   });
 });
 
@@ -437,12 +435,17 @@ describe("AgentManager — isolation: worktree fails loud, no silent fallback", 
     manager?.dispose();
   });
 
-  it("spawn() throws when createWorktree returns undefined; no orphan record left behind", async () => {
-    const { createWorktree } = await import("../src/worktree.js");
-    vi.mocked(createWorktree).mockReturnValueOnce(undefined);
-    vi.mocked(runAgent).mockClear();
-
-    ({ manager } = createManager());
+  it("spawn() throws when worktrees.create returns undefined; no orphan record left behind", async () => {
+    const worktrees: WorktreeManager = {
+      create: vi.fn().mockReturnValue(undefined),
+      cleanup: vi.fn(() => ({ hasChanges: false })),
+      prune: vi.fn(),
+    };
+    const runner: AgentRunner = {
+      run: vi.fn(),
+      resume: vi.fn(),
+    };
+    ({ manager } = createManager({ runner, worktrees }));
     expect(() => manager.spawn(mockPi, mockCtx, "general-purpose", "test", {
       description: "test",
       isolation: "worktree",
@@ -450,8 +453,8 @@ describe("AgentManager — isolation: worktree fails loud, no silent fallback", 
 
     // Cleaned up — no orphan in listAgents()
     expect(manager.listAgents()).toEqual([]);
-    // runAgent never invoked — strict, no silent fallback
-    expect(runAgent).not.toHaveBeenCalled();
+    // runner.run never invoked — strict, no silent fallback
+    expect(runner.run).not.toHaveBeenCalled();
   });
 });
 
@@ -478,7 +481,6 @@ describe("AgentManager — dependency injection via options bag", () => {
       prune: vi.fn(),
     };
     manager = new AgentManager({
-      cwd: "/test-cwd",
       runner,
       worktrees,
     });
