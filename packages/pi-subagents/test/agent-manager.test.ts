@@ -454,3 +454,42 @@ describe("AgentManager — isolation: worktree fails loud, no silent fallback", 
     expect(runAgent).not.toHaveBeenCalled();
   });
 });
+
+describe("AgentManager — dependency injection via options bag", () => {
+  let manager: AgentManager;
+
+  afterEach(() => {
+    manager?.dispose();
+  });
+
+  it("calls injected runner.run when spawning an agent", async () => {
+    const runner = {
+      run: vi.fn().mockResolvedValue({
+        responseText: "injected",
+        session: mockSession(),
+        aborted: false,
+        steered: false,
+      }),
+      resume: vi.fn(),
+    };
+    const worktrees = {
+      create: vi.fn(),
+      cleanup: vi.fn(() => ({ hasChanges: false })),
+      prune: vi.fn(),
+    };
+    manager = new AgentManager({
+      cwd: "/test-cwd",
+      runner,
+      worktrees,
+    });
+
+    const id = manager.spawn(mockPi, mockCtx, "general-purpose", "test", {
+      description: "test",
+      isBackground: true,
+    });
+    await manager.getRecord(id)!.promise;
+
+    expect(runner.run).toHaveBeenCalledOnce();
+    expect(manager.getRecord(id)!.result).toBe("injected");
+  });
+});
