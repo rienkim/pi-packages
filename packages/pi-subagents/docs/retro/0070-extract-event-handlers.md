@@ -46,3 +46,4 @@ Released as `pi-subagents-v5.8.0` with 8 new handler tests (520 total).
 ### Changes made
 
 1. Retro file created at `packages/pi-subagents/docs/retro/0070-extract-event-handlers.md`.
+2. Updated `packages/pi-subagents/docs/architecture/architecture.md` — marked #87 and #70 as done (✓), updated Phase 2 status to complete, updated next-issue pointer to #66.
