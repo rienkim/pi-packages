@@ -53,4 +53,6 @@ Run `pnpm run check` (`tsc --noEmit`) for type-only changes.
 - When a plan adds a parameter that flows through callback chains, the "Module-Level Changes" section must list every file in the chain.
 - When a TDD step changes a shared interface, run `pnpm run check` immediately after that step's commit.
 - When adding a field to a shared interface, grep for ALL test files that construct a compatible mock — not just factory helpers.
+- When a TDD plan converts an interface to a class, grep for `{ ...variable` spread patterns in tests — spreading a class instance produces a plain object that lacks the class's methods and private fields.
+  Replace with `createTestX({ ...overrides })` factory calls or direct field mutation.
 - When integrating an unfamiliar library or data structure, write a disposable exploratory script first to inspect the actual runtime shape.

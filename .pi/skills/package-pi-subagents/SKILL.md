@@ -73,7 +73,8 @@ index.ts ──wires──> agent-manager.ts ──calls──> agent-runner.ts
     ├── settings.ts
     ├── model-resolver.ts
     ├── invocation-config.ts
-    ├── types.ts
+    ├── agent-record.ts (AgentRecord class)
+    ├── types.ts ──re-exports──> agent-record.ts
     └── session-dir.ts
 ```
 
@@ -94,7 +95,8 @@ index.ts ──wires──> agent-manager.ts ──calls──> agent-runner.ts
 | `agent-manager.ts`  | Manages agent lifecycle: spawn, resume, abort. Enforces a configurable concurrency limit (default 4) by queuing excess background agents.                                                       |
 | `agent-runner.ts`   | IO shell: calls `assembleSessionConfig`, creates the SDK session, filters tools, binds extensions (Patch 2), injects `<active_agent>` tag (Patch 3), runs the event loop, and collects results. |
 | `session-config.ts` | Pure configuration assembler. Given `(type, ctx, options, env)`, returns `SessionConfig` — system prompt, tool names, model handle, extras — with no SDK types constructed.                     |
-| `types.ts`          | Shared type definitions: `AgentConfig`, `AgentRecord`, `SubagentType`, `MemoryScope`, `IsolationMode`, etc.                                                                                     |
+| `agent-record.ts`   | `AgentRecord` class with encapsulated status-transition methods (`markRunning`, `markCompleted`, etc.). Re-exported from `types.ts`.                                                            |
+| `types.ts`          | Shared type definitions and re-exports: `AgentConfig`, `AgentRecord` (from `agent-record.ts`), `SubagentType`, `MemoryScope`, `IsolationMode`, etc.                                             |
 
 #### Agent configuration
 
