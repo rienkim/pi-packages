@@ -353,23 +353,28 @@ Together they eliminate module-scope mutable state, create a testable functional
    - Split `runAgent()` into a pure configuration assembler (~200 lines) and an IO shell (~200 lines).
    - The assembler becomes independently testable without mocking the Pi SDK.
 
-3. **gotgenes/pi-packages#76** — Inject `cwd` into `AgentManager`
-   - Replace the `process.cwd()` call in `dispose()` with a constructor parameter.
-   - A small, mechanical prerequisite for Issue #72.
+3. **gotgenes/pi-packages#76** ✓ — Inject `cwd` into `AgentManager`
+   - Replaced the `process.cwd()` call in `dispose()` with a constructor parameter.
 
-4. **gotgenes/pi-packages#80** — Consolidate `getConfig` / `getAgentConfig` into a single resolution path
-   - Replace the two overlapping lookup functions with a single `resolveAgentConfig(type): AgentConfig` that handles the unknown-type fallback internally.
-   - Eliminates the duplicated fallback chain exposed by #71 and simplifies test mock setup.
+4. **gotgenes/pi-packages#80** ✓ — Consolidate `getConfig` / `getAgentConfig` into a single resolution path
+   - Replaced the two overlapping lookup functions with a single `resolveAgentConfig(type): AgentConfig` that handles the unknown-type fallback internally.
+   - Eliminated the duplicated fallback chain exposed by #71 and simplified test mock setup.
 
 ### Phase 2: Core decomposition
 
 These build on Phase 1 and should land after it.
 
-4. **gotgenes/pi-packages#72** — Dependency-inject `AgentManager`'s collaborators
-   - Introduce `AgentRunner` and `WorktreeManager` interfaces and inject them into `AgentManager`.
-   - Removes direct imports of `agent-runner.ts` and `worktree.ts` from `agent-manager.ts`.
+4. **gotgenes/pi-packages#84** ✓ — Extract `GitWorktreeManager` class from `worktree.ts`
+   - Added `WorktreeManager` interface and `GitWorktreeManager` class that captures `cwd` at construction.
+   - Prerequisite for #72 — separated the real-object extraction from the DI refactor.
 
-5. **gotgenes/pi-packages#70** — Extract event handlers into `src/handlers/`
+5. **gotgenes/pi-packages#72** ✓ — Dependency-inject `AgentManager`'s collaborators
+   - Defined `AgentRunner` interface (execution boundary) and `ResumeOptions` type in `agent-runner.ts`.
+   - Converted `AgentManager` constructor from 6 positional parameters to an `AgentManagerOptions` bag with injected `AgentRunner` and `WorktreeManager`.
+   - Removed all runtime imports of `agent-runner.ts` and `worktree.ts` from `agent-manager.ts` (only `import type` remains).
+   - Migrated all tests from `vi.mock()` module stubs to `vi.fn()` interface stubs.
+
+6. **gotgenes/pi-packages#70** — Extract event handlers into `src/handlers/`
    - Move the four inline lambdas (`session_start`, `session_before_switch`, `session_shutdown`, `tool_execution_start`) into named handler modules.
    - Requires Issue #69 because handlers need the `SubagentRuntime` as their deps bag.
    - Target: `src/index.ts` ≤150 lines.
@@ -378,35 +383,33 @@ These build on Phase 1 and should land after it.
 
 Small cleanups that are safest after the structural changes settle.
 
-6. **gotgenes/pi-packages#66** — Replace `as any` casts with proper SDK types
+7. **gotgenes/pi-packages#66** — Replace `as any` casts with proper SDK types
    - Type-only change in the tool/menu factory dep interfaces.
    - Best done after Issues #69 and #70 when the interfaces are stable.
 
-7. **gotgenes/pi-packages#77** — Add `projectAgentsDir` to `AgentMenuDeps`
+8. **gotgenes/pi-packages#77** — Add `projectAgentsDir` to `AgentMenuDeps`
    - Remove the inline `process.cwd()` lambda from the menu handler.
 
 ### Phase 4: Features and cross-cutting concerns
 
-8. **gotgenes/pi-packages#61** — Port transcript logging to Pi's official JSONL session format
+9. **gotgenes/pi-packages#61** — Port transcript logging to Pi's official JSONL session format
    - Feature work that should happen after structural refactoring is complete so the output-file subsystem has a stable home.
 
-9. **gotgenes/pi-packages#22** — Parent-session resolution for `nicobailon/pi-subagents` children
-   - Cross-extension issue that spans `pi-permission-system` and `pi-subagents`.
-   - Requires coordination on env-var conventions.
-   - Not blocked by the structural refactor but logically separate from it.
+10. **gotgenes/pi-packages#22** — Parent-session resolution for `nicobailon/pi-subagents` children
+    - Cross-extension issue that spans `pi-permission-system` and `pi-subagents`.
+    - Requires coordination on env-var conventions.
+    - Not blocked by the structural refactor but logically separate from it.
 
 ### Dependency graph
 
 ```text
 #69 (SubagentRuntime) ✓ ─┬─► #70 (handler extraction)
-                        │
-                        └─► #72 (AgentManager DI) ──(optional)──► #70
-
-#71 (pure assembler) ✓ ──► #80 (consolidate getConfig/getAgentConfig)
-
-#76 (cwd injection) ────► #72
-
-#80 (config lookup) ────(independent, simplifies #72 and test mocks)
+                         │
+#71 (pure assembler) ✓   │
+#80 (config lookup) ✓    │
+#76 (cwd injection) ✓    │
+#84 (WorktreeManager) ✓  │
+#72 (AgentManager DI) ✓ ─┘──(optional)──► #70
 
 #66 (type casts) ◄─────(after structural changes settle)
 #77 (projectAgentsDir) ◄─(after #66 or parallel)
@@ -420,10 +423,11 @@ Small cleanups that are safest after the structural changes settle.
 The recommended sequence is:
 
 ```text
-#69 ✓ → #71 ✓ → #80 → #76 → #72 → #70 → #66 → #77 → #61
+#69 ✓ → #71 ✓ → #80 ✓ → #76 ✓ → #84 ✓ → #72 ✓ → #70 → #66 → #77 → #61
 ```
 
-Issue #80 slots after #71 because it cleans up the redundant lookup that #71 exposed, and simplifies mock setup for subsequent issues.
+Phases 1 and 2 are complete.
+The next issue is #70 (handler extraction), which unblocks Phase 3.
 Issue #22 is a parallel cross-extension track and does not gate the structural work.
 
 ## Relationship with upstream
