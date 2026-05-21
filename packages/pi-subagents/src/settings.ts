@@ -79,6 +79,45 @@ export class SettingsManager {
   set maxConcurrent(n: number) {
     this._maxConcurrent = Math.max(1, n);
   }
+
+  // ── Lifecycle methods ──
+
+  /**
+   * Load merged settings (global + project), apply to in-memory values,
+   * and emit the `subagents:settings_loaded` lifecycle event.
+   * Returns the raw loaded settings object.
+   */
+  load(): SubagentsSettings {
+    const settings = loadSettings(this.cwd);
+    if (typeof settings.maxConcurrent === "number") this.maxConcurrent = settings.maxConcurrent;
+    if (typeof settings.defaultMaxTurns === "number") this.defaultMaxTurns = settings.defaultMaxTurns;
+    if (typeof settings.graceTurns === "number") this.graceTurns = settings.graceTurns;
+    this.emit("subagents:settings_loaded", { settings });
+    return settings;
+  }
+
+  /**
+   * Snapshot current in-memory values for persistence.
+   * `defaultMaxTurns` uses 0 as the on-disk marker for unlimited (undefined).
+   */
+  snapshot(): { maxConcurrent: number; defaultMaxTurns: number; graceTurns: number } {
+    return {
+      maxConcurrent: this._maxConcurrent,
+      defaultMaxTurns: this._defaultMaxTurns ?? 0,
+      graceTurns: this._graceTurns,
+    };
+  }
+
+  /**
+   * Persist the current snapshot, emit `subagents:settings_changed`,
+   * and return the toast the UI should display.
+   */
+  saveAndNotify(successMsg: string): { message: string; level: "info" | "warning" } {
+    const snap = this.snapshot();
+    const persisted = saveSettings(snap, this.cwd);
+    this.emit("subagents:settings_changed", { settings: snap, persisted });
+    return persistToastFor(successMsg, persisted);
+  }
 }
 
 // Sanity ceilings — prevent hand-edited configs from asking for values that

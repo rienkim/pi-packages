@@ -479,4 +479,168 @@ describe("SettingsManager", () => {
       expect(sm.maxConcurrent).toBe(1);
     });
   });
+
+  describe("load()", () => {
+    let globalDir: string;
+    let projectDir: string;
+    let originalAgentDirEnv: string | undefined;
+
+    beforeEach(() => {
+      globalDir = mkdtempSync(join(tmpdir(), "pi-sm-global-"));
+      projectDir = mkdtempSync(join(tmpdir(), "pi-sm-project-"));
+      originalAgentDirEnv = process.env.PI_CODING_AGENT_DIR;
+      process.env.PI_CODING_AGENT_DIR = globalDir;
+    });
+
+    afterEach(() => {
+      if (originalAgentDirEnv == null) delete process.env.PI_CODING_AGENT_DIR;
+      else process.env.PI_CODING_AGENT_DIR = originalAgentDirEnv;
+      rmSync(globalDir, { recursive: true, force: true });
+      rmSync(projectDir, { recursive: true, force: true });
+    });
+
+    it("applies merged settings from disk to in-memory values", () => {
+      mkdirSync(join(projectDir, ".pi"), { recursive: true });
+      writeFileSync(join(projectDir, ".pi", "subagents.json"), JSON.stringify({ graceTurns: 7, maxConcurrent: 8 }));
+      const emit = vi.fn();
+      const sm = new SettingsManager({ emit, cwd: projectDir });
+      sm.load();
+      expect(sm.graceTurns).toBe(7);
+      expect(sm.maxConcurrent).toBe(8);
+      expect(sm.defaultMaxTurns).toBeUndefined();
+    });
+
+    it("applies defaultMaxTurns from disk (0 → unlimited)", () => {
+      mkdirSync(join(projectDir, ".pi"), { recursive: true });
+      writeFileSync(join(projectDir, ".pi", "subagents.json"), JSON.stringify({ defaultMaxTurns: 0 }));
+      const sm = new SettingsManager({ emit: vi.fn(), cwd: projectDir });
+      sm.load();
+      expect(sm.defaultMaxTurns).toBeUndefined();
+    });
+
+    it("applies defaultMaxTurns: 50 from disk", () => {
+      mkdirSync(join(projectDir, ".pi"), { recursive: true });
+      writeFileSync(join(projectDir, ".pi", "subagents.json"), JSON.stringify({ defaultMaxTurns: 50 }));
+      const sm = new SettingsManager({ emit: vi.fn(), cwd: projectDir });
+      sm.load();
+      expect(sm.defaultMaxTurns).toBe(50);
+    });
+
+    it("emits subagents:settings_loaded with merged settings", () => {
+      mkdirSync(join(projectDir, ".pi"), { recursive: true });
+      writeFileSync(join(projectDir, ".pi", "subagents.json"), JSON.stringify({ graceTurns: 7 }));
+      const emit = vi.fn();
+      const sm = new SettingsManager({ emit, cwd: projectDir });
+      sm.load();
+      expect(emit).toHaveBeenCalledTimes(1);
+      expect(emit).toHaveBeenCalledWith("subagents:settings_loaded", { settings: { graceTurns: 7 } });
+    });
+
+    it("returns the loaded settings object", () => {
+      mkdirSync(join(projectDir, ".pi"), { recursive: true });
+      writeFileSync(join(projectDir, ".pi", "subagents.json"), JSON.stringify({ maxConcurrent: 6 }));
+      const sm = new SettingsManager({ emit: vi.fn(), cwd: projectDir });
+      const result = sm.load();
+      expect(result).toEqual({ maxConcurrent: 6 });
+    });
+
+    it("emits with empty settings when no files exist", () => {
+      const emit = vi.fn();
+      const sm = new SettingsManager({ emit, cwd: projectDir });
+      sm.load();
+      expect(emit).toHaveBeenCalledWith("subagents:settings_loaded", { settings: {} });
+    });
+  });
+
+  describe("snapshot()", () => {
+    it("returns default values before any changes", () => {
+      const sm = new SettingsManager({ emit: vi.fn(), cwd: "/tmp" });
+      expect(sm.snapshot()).toEqual({ maxConcurrent: 4, defaultMaxTurns: 0, graceTurns: 5 });
+    });
+
+    it("reflects mutations: defaultMaxTurns undefined maps to 0 in snapshot", () => {
+      const sm = new SettingsManager({ emit: vi.fn(), cwd: "/tmp" });
+      sm.defaultMaxTurns = undefined;
+      sm.graceTurns = 3;
+      sm.maxConcurrent = 8;
+      expect(sm.snapshot()).toEqual({ maxConcurrent: 8, defaultMaxTurns: 0, graceTurns: 3 });
+    });
+
+    it("reflects a concrete defaultMaxTurns value", () => {
+      const sm = new SettingsManager({ emit: vi.fn(), cwd: "/tmp" });
+      sm.defaultMaxTurns = 20;
+      expect(sm.snapshot()).toEqual({ maxConcurrent: 4, defaultMaxTurns: 20, graceTurns: 5 });
+    });
+  });
+
+  describe("saveAndNotify()", () => {
+    let projectDir: string;
+    let originalAgentDirEnv: string | undefined;
+
+    beforeEach(() => {
+      projectDir = mkdtempSync(join(tmpdir(), "pi-sm-save-"));
+      originalAgentDirEnv = process.env.PI_CODING_AGENT_DIR;
+      // point global dir somewhere that won't interfere
+      process.env.PI_CODING_AGENT_DIR = mkdtempSync(join(tmpdir(), "pi-sm-global-"));
+    });
+
+    afterEach(() => {
+      if (originalAgentDirEnv == null) delete process.env.PI_CODING_AGENT_DIR;
+      else process.env.PI_CODING_AGENT_DIR = originalAgentDirEnv;
+      rmSync(projectDir, { recursive: true, force: true });
+      rmSync(process.env.PI_CODING_AGENT_DIR ?? "", { recursive: true, force: true });
+    });
+
+    it("persists snapshot to disk and returns info toast on success", () => {
+      const emit = vi.fn();
+      const sm = new SettingsManager({ emit, cwd: projectDir });
+      sm.maxConcurrent = 5;
+      const toast = sm.saveAndNotify("Max concurrency set to 5");
+      expect(toast).toEqual({ message: "Max concurrency set to 5", level: "info" });
+      const written = JSON.parse(readFileSync(join(projectDir, ".pi", "subagents.json"), "utf-8"));
+      expect(written).toEqual({ maxConcurrent: 5, defaultMaxTurns: 0, graceTurns: 5 });
+    });
+
+    it("emits subagents:settings_changed with persisted:true on success", () => {
+      const emit = vi.fn();
+      const sm = new SettingsManager({ emit, cwd: projectDir });
+      sm.graceTurns = 3;
+      sm.saveAndNotify("Grace turns set to 3");
+      expect(emit).toHaveBeenCalledWith("subagents:settings_changed", {
+        settings: { maxConcurrent: 4, defaultMaxTurns: 0, graceTurns: 3 },
+        persisted: true,
+      });
+    });
+
+    it("returns warning toast when persist fails", () => {
+      const filePosingAsCwd = join(tmpdir(), `pi-sm-notdir-${Date.now()}`);
+      writeFileSync(filePosingAsCwd, "");
+      try {
+        const sm = new SettingsManager({ emit: vi.fn(), cwd: filePosingAsCwd });
+        const toast = sm.saveAndNotify("Max concurrency set to 5");
+        expect(toast).toEqual({
+          message: "Max concurrency set to 5 (session only; failed to persist)",
+          level: "warning",
+        });
+      } finally {
+        rmSync(filePosingAsCwd, { force: true });
+      }
+    });
+
+    it("emits subagents:settings_changed with persisted:false on failure", () => {
+      const filePosingAsCwd = join(tmpdir(), `pi-sm-notdir2-${Date.now()}`);
+      writeFileSync(filePosingAsCwd, "");
+      const emit = vi.fn();
+      try {
+        const sm = new SettingsManager({ emit, cwd: filePosingAsCwd });
+        sm.saveAndNotify("something");
+        expect(emit).toHaveBeenCalledWith("subagents:settings_changed", {
+          settings: { maxConcurrent: 4, defaultMaxTurns: 0, graceTurns: 5 },
+          persisted: false,
+        });
+      } finally {
+        rmSync(filePosingAsCwd, { force: true });
+      }
+    });
+  });
 });
