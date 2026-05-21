@@ -7,6 +7,7 @@ import {
   formatTaskNotification,
   getStatusLabel,
 } from "../src/notification.js";
+import { NotificationState } from "../src/notification-state.js";
 import { AgentActivityTracker } from "../src/ui/agent-activity-tracker.js";
 import { createTestRecord } from "./helpers/make-record.js";
 
@@ -69,10 +70,17 @@ describe("formatTaskNotification", () => {
     expect(xml).toContain("No output.");
   });
 
-  it("includes toolCallId when present", () => {
+  it("includes toolCallId when present (legacy field)", () => {
     const record = createTestRecord({ toolCallId: "tc-123" });
     const xml = formatTaskNotification(record, 500);
     expect(xml).toContain("<tool-use-id>tc-123</tool-use-id>");
+  });
+
+  it("includes toolCallId from record.notification when present", () => {
+    const record = createTestRecord();
+    record.notification = new NotificationState("notif-456");
+    const xml = formatTaskNotification(record, 500);
+    expect(xml).toContain("<tool-use-id>notif-456</tool-use-id>");
   });
 
   it("excludes toolCallId when absent", () => {

@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { AgentTypeRegistry } from "../../src/agent-types.js";
+import { NotificationState } from "../../src/notification-state.js";
 import { createGetResultTool } from "../../src/tools/get-result-tool.js";
 import type { AgentRecord } from "../../src/types.js";
 import { createTestRecord } from "../helpers/make-record.js";
@@ -83,6 +84,15 @@ describe("createGetResultTool", () => {
     const result = await execute(deps, { agent_id: "agent-1", wait: true });
     // After waiting, the record is completed and result is shown
     expect(result.content[0].text).toContain("Finished after wait.");
+  });
+
+  it("calls notification.markConsumed() when record has a NotificationState", async () => {
+    const record = createTestRecord();
+    record.notification = new NotificationState("tc-1");
+    const records = new Map([["agent-1", record]]);
+    const deps = makeDeps(records);
+    await execute(deps, { agent_id: "agent-1" });
+    expect(record.notification.resultConsumed).toBe(true);
   });
 
   it("includes conversation when verbose=true", async () => {

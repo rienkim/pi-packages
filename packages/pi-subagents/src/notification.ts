@@ -41,11 +41,13 @@ export function formatTaskNotification(record: AgentRecord, resultMaxLen: number
       : record.result
     : "No output.";
 
+  const toolCallId = record.notification?.toolCallId ?? record.toolCallId;
+  const outputFile = record.execution?.outputFile ?? record.outputFile;
   return [
     "<task-notification>",
     `<task-id>${record.id}</task-id>`,
-    record.toolCallId ? `<tool-use-id>${escapeXml(record.toolCallId)}</tool-use-id>` : null,
-    record.outputFile ? `<output-file>${escapeXml(record.outputFile)}</output-file>` : null,
+    toolCallId ? `<tool-use-id>${escapeXml(toolCallId)}</tool-use-id>` : null,
+    outputFile ? `<output-file>${escapeXml(outputFile)}</output-file>` : null,
     `<status>${escapeXml(status)}</status>`,
     `<summary>Agent "${escapeXml(record.description)}" ${record.status}</summary>`,
     `<result>${escapeXml(resultPreview)}</result>`,
@@ -154,10 +156,12 @@ export function createNotificationSystem(deps: NotificationDeps): NotificationSy
   }
 
   function emitIndividualNudge(record: AgentRecord) {
-    if (record.resultConsumed) return;
+    const resultConsumed = record.notification?.resultConsumed ?? record.resultConsumed;
+    if (resultConsumed) return;
 
     const notification = formatTaskNotification(record, 500);
-    const footer = record.outputFile ? `\nFull transcript available at: ${record.outputFile}` : "";
+    const outputFile = record.execution?.outputFile ?? record.outputFile;
+    const footer = outputFile ? `\nFull transcript available at: ${outputFile}` : "";
 
     deps.sendMessage(
       {
