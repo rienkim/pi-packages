@@ -20,17 +20,15 @@ import {
   SPINNER,
   type UICtx,
 } from "../ui/agent-widget.js";
-import { addUsage, type LifetimeUsage } from "../usage.js";
+import { subscribeUIObserver } from "../ui/ui-observer.js";
+import type { LifetimeUsage } from "../usage.js";
 import { formatLifetimeTokens, textResult } from "./helpers.js";
 
 // ---- Agent-tool-specific helpers ----
 
-/**
- * Create an AgentActivity state and spawn callbacks for tracking tool usage.
- * Used by both foreground and background paths to avoid duplication.
- */
-export function createActivityTracker(maxTurns?: number, onStreamUpdate?: () => void) {
-  const state: AgentActivity = {
+/** Create a fresh AgentActivity state for tracking UI progress. */
+function createAgentActivity(maxTurns?: number): AgentActivity {
+  return {
     activeTools: new Map(),
     toolUses: 0,
     turnCount: 1,
@@ -39,40 +37,6 @@ export function createActivityTracker(maxTurns?: number, onStreamUpdate?: () => 
     session: undefined,
     lifetimeUsage: { input: 0, output: 0, cacheWrite: 0 },
   };
-
-  const callbacks = {
-    onToolActivity: (activity: { type: "start" | "end"; toolName: string }) => {
-      if (activity.type === "start") {
-        state.activeTools.set(activity.toolName + "_" + Date.now(), activity.toolName);
-      } else {
-        for (const [key, name] of state.activeTools) {
-          if (name === activity.toolName) {
-            state.activeTools.delete(key);
-            break;
-          }
-        }
-        state.toolUses++;
-      }
-      onStreamUpdate?.();
-    },
-    onTextDelta: (_delta: string, fullText: string) => {
-      state.responseText = fullText;
-      onStreamUpdate?.();
-    },
-    onTurnEnd: (turnCount: number) => {
-      state.turnCount = turnCount;
-      onStreamUpdate?.();
-    },
-    onSessionCreated: (session: any) => {
-      state.session = session;
-    },
-    onAssistantUsage: (usage: { input: number; output: number; cacheWrite: number }) => {
-      addUsage(state.lifetimeUsage, usage);
-      onStreamUpdate?.();
-    },
-  };
-
-  return { state, callbacks };
 }
 
 /** Parenthetical status note for completed agent result text. */
@@ -451,8 +415,7 @@ Guidelines:
 
       // Background execution
       if (runInBackground) {
-        const { state: bgState, callbacks: bgCallbacks } =
-          createActivityTracker(effectiveMaxTurns);
+        const bgState = createAgentActivity(effectiveMaxTurns);
 
         let id: string;
 
@@ -469,7 +432,10 @@ Guidelines:
             isBackground: true,
             isolation,
             invocation: agentInvocation,
-            ...bgCallbacks,
+            onSessionCreated: (session: any) => {
+              bgState.session = session;
+              subscribeUIObserver(session, bgState);
+            },
           });
         } catch (err) {
           return textResult(err instanceof Error ? err.message : String(err));
@@ -521,6 +487,9 @@ Guidelines:
       const startedAt = Date.now();
       let fgId: string | undefined;
 
+      const fgState = createAgentActivity(effectiveMaxTurns);
+      let unsubUI: (() => void) | undefined;
+
       const streamUpdate = () => {
         const details: AgentDetails = {
           ...detailBase,
@@ -537,25 +506,6 @@ Guidelines:
           content: [{ type: "text", text: `${fgState.toolUses} tool uses...` }],
           details: details as any,
         });
-      };
-
-      const { state: fgState, callbacks: fgCallbacks } = createActivityTracker(
-        effectiveMaxTurns,
-        streamUpdate,
-      );
-
-      // Wire session creation to register in widget
-      const origOnSession = fgCallbacks.onSessionCreated;
-      fgCallbacks.onSessionCreated = (session: any) => {
-        origOnSession(session);
-        for (const a of deps.manager.listAgents()) {
-          if (a.session === session) {
-            fgId = a.id;
-            deps.agentActivity.set(a.id, fgState);
-            deps.widget.ensureTimer();
-            break;
-          }
-        }
       };
 
       // Animate spinner at ~80ms (smooth rotation through 10 braille frames)
@@ -584,15 +534,28 @@ Guidelines:
             signal,
             parentSessionFile: ctx.sessionManager.getSessionFile(),
             parentSessionId: ctx.sessionManager.getSessionId(),
-            ...fgCallbacks,
+            onSessionCreated: (session: any) => {
+              fgState.session = session;
+              unsubUI = subscribeUIObserver(session, fgState, streamUpdate);
+              for (const a of deps.manager.listAgents()) {
+                if (a.session === session) {
+                  fgId = a.id;
+                  deps.agentActivity.set(a.id, fgState);
+                  deps.widget.ensureTimer();
+                  break;
+                }
+              }
+            },
           },
         );
       } catch (err) {
         clearInterval(spinnerInterval);
+        unsubUI?.();
         return textResult(err instanceof Error ? err.message : String(err));
       }
 
       clearInterval(spinnerInterval);
+      unsubUI?.();
 
       // Clean up foreground agent from widget
       if (fgId) {

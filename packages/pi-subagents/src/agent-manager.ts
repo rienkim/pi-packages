@@ -10,7 +10,7 @@ import { randomUUID } from "node:crypto";
 import type { Model } from "@earendil-works/pi-ai";
 import type { AgentSession, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { AgentRecord } from "./agent-record.js";
-import type { AgentRunner, ToolActivity } from "./agent-runner.js";
+import type { AgentRunner } from "./agent-runner.js";
 import { debugLog } from "./debug.js";
 import { buildParentSnapshot } from "./parent-snapshot.js";
 import { subscribeRecordObserver } from "./record-observer.js";
@@ -64,18 +64,8 @@ export interface SpawnOptions {
   invocation?: AgentInvocation;
   /** Parent abort signal — when aborted, the subagent is also stopped. */
   signal?: AbortSignal;
-  /** Called on tool start/end with activity info (for streaming progress to UI). */
-  onToolActivity?: (activity: ToolActivity) => void;
-  /** Called on streaming text deltas from the assistant response. */
-  onTextDelta?: (delta: string, fullText: string) => void;
-  /** Called when the agent session is created (for accessing session stats). */
+  /** Called when the agent session is created — the one remaining callback. */
   onSessionCreated?: (session: AgentSession) => void;
-  /** Called at the end of each agentic turn with the cumulative count. */
-  onTurnEnd?: (turnCount: number) => void;
-  /** Called once per assistant message_end with that message's usage delta. */
-  onAssistantUsage?: (usage: { input: number; output: number; cacheWrite: number }) => void;
-  /** Called when the session successfully compacts. */
-  onCompaction?: (info: CompactionInfo) => void;
   /** Path to the parent session's JSONL file (for deriving the subagent session directory). */
   parentSessionFile?: string;
   /** Session ID of the parent agent (stored in the child session's parentSession header). */
@@ -213,11 +203,6 @@ export class AgentManager {
       parentSessionFile: options.parentSessionFile,
       parentSessionId: options.parentSessionId,
       signal: record.abortController!.signal,
-      onToolActivity: options.onToolActivity,
-      onTurnEnd: options.onTurnEnd,
-      onTextDelta: options.onTextDelta,
-      onAssistantUsage: options.onAssistantUsage,
-      onCompaction: options.onCompaction,
       onSessionCreated: (session) => {
         record.session = session;
         // Capture the session file path early so it's available for display
