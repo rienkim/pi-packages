@@ -4,12 +4,16 @@ import { ToolStartHandler } from "../../src/handlers/tool-start.js";
 
 describe("ToolStartHandler", () => {
   let runtime: ToolStartRuntime;
+  let mockSetUICtx: ReturnType<typeof vi.fn<ToolStartRuntime["setUICtx"]>>;
+  let mockOnTurnStart: ReturnType<typeof vi.fn<ToolStartRuntime["onTurnStart"]>>;
   let handler: ToolStartHandler;
 
   beforeEach(() => {
+    mockSetUICtx = vi.fn();
+    mockOnTurnStart = vi.fn();
     runtime = {
-      setUICtx: vi.fn(),
-      onTurnStart: vi.fn(),
+      setUICtx: mockSetUICtx,
+      onTurnStart: mockOnTurnStart,
     };
     handler = new ToolStartHandler(runtime);
   });
@@ -33,10 +37,10 @@ describe("ToolStartHandler", () => {
 
     it("calls setUICtx before onTurnStart", () => {
       const callOrder: string[] = [];
-      (runtime.setUICtx as ReturnType<typeof vi.fn>).mockImplementation(() => {
+      mockSetUICtx.mockImplementation(() => {
         callOrder.push("setUICtx");
       });
-      (runtime.onTurnStart as ReturnType<typeof vi.fn>).mockImplementation(() => {
+      mockOnTurnStart.mockImplementation(() => {
         callOrder.push("onTurnStart");
       });
 
