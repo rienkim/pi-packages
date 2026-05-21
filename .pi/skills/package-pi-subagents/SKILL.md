@@ -100,11 +100,11 @@ index.ts ──wires──> agent-manager.ts ──calls──> agent-runner.ts
 
 #### Agent configuration
 
-| Module              | Responsibility                                                                                                     |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| `agent-types.ts`    | Unified agent type registry. Merges embedded defaults with user-defined agents from `.pi/agents/*.md`.             |
-| `default-agents.ts` | Embedded default agent configurations (`general-purpose`, `Explore`, `Plan`).                                      |
-| `custom-agents.ts`  | Loads user-defined agent `.md` files from project and global directories. Parses frontmatter for config overrides. |
+| Module              | Responsibility                                                                                                                                                                                      |
+| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `agent-types.ts`    | `AgentTypeRegistry` class (injectable, replaces module-scoped state). `AgentConfigLookup` interface. Pure free functions: `BUILTIN_TOOL_NAMES`, `getMemoryToolNames`, `getReadOnlyMemoryToolNames`. |
+| `default-agents.ts` | Embedded default agent configurations (`general-purpose`, `Explore`, `Plan`).                                                                                                                       |
+| `custom-agents.ts`  | Loads user-defined agent `.md` files from project and global directories. Parses frontmatter for config overrides.                                                                                  |
 
 #### Prompt assembly
 
