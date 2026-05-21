@@ -1,170 +1,183 @@
-import { describe, expect, it, vi } from "vitest";
-import type { AgentActivity } from "../../src/ui/agent-widget.js";
+import { describe, expect, it } from "vitest";
+import { AgentActivityTracker } from "../../src/ui/agent-activity-tracker.js";
 import { subscribeUIObserver } from "../../src/ui/ui-observer.js";
 
 /** Minimal mock session with subscribable event bus. */
 function mockSession() {
-  const subscribers = new Set<(event: any) => void>();
-  return {
-    subscribe: vi.fn((fn: (event: any) => void) => {
-      subscribers.add(fn);
-      return () => { subscribers.delete(fn); };
-    }),
-    emit(event: any) {
-      for (const fn of subscribers) fn(event);
-    },
-  };
-}
-
-function makeActivity(overrides?: Partial<AgentActivity>): AgentActivity {
-  return {
-    activeTools: new Map(),
-    toolUses: 0,
-    turnCount: 1,
-    responseText: "",
-    lifetimeUsage: { input: 0, output: 0, cacheWrite: 0 },
-    ...overrides,
-  };
+	const subscribers = new Set<(event: any) => void>();
+	return {
+		subscribe: (fn: (event: any) => void) => {
+			subscribers.add(fn);
+			return () => {
+				subscribers.delete(fn);
+			};
+		},
+		emit(event: any) {
+			for (const fn of subscribers) fn(event);
+		},
+	};
 }
 
 describe("subscribeUIObserver", () => {
-  it("adds to activeTools on tool_execution_start and calls onUpdate", () => {
-    const session = mockSession();
-    const state = makeActivity();
-    const onUpdate = vi.fn();
-    subscribeUIObserver(session, state, onUpdate);
+	it("adds to activeTools on tool_execution_start and calls onUpdate", () => {
+		const session = mockSession();
+		const tracker = new AgentActivityTracker();
+		const onUpdate = () => {};
+		subscribeUIObserver(session, tracker, onUpdate);
 
-    session.emit({ type: "tool_execution_start", toolName: "Read" });
-    expect(state.activeTools.size).toBe(1);
-    expect([...state.activeTools.values()]).toContain("Read");
-    expect(onUpdate).toHaveBeenCalledOnce();
-  });
+		session.emit({ type: "tool_execution_start", toolName: "Read" });
+		expect(tracker.activeTools.size).toBe(1);
+		expect([...tracker.activeTools.values()]).toContain("Read");
+	});
 
-  it("removes from activeTools on tool_execution_end and increments toolUses", () => {
-    const session = mockSession();
-    const state = makeActivity();
-    const onUpdate = vi.fn();
-    subscribeUIObserver(session, state, onUpdate);
+	it("removes from activeTools on tool_execution_end and increments toolUses", () => {
+		const session = mockSession();
+		const tracker = new AgentActivityTracker();
+		subscribeUIObserver(session, tracker);
 
-    session.emit({ type: "tool_execution_start", toolName: "Read" });
-    session.emit({ type: "tool_execution_end", toolName: "Read" });
+		session.emit({ type: "tool_execution_start", toolName: "Read" });
+		session.emit({ type: "tool_execution_end", toolName: "Read" });
 
-    expect(state.activeTools.size).toBe(0);
-    expect(state.toolUses).toBe(1);
-    expect(onUpdate).toHaveBeenCalledTimes(2);
-  });
+		expect(tracker.activeTools.size).toBe(0);
+		expect(tracker.toolUses).toBe(1);
+	});
 
-  it("resets responseText on message_start", () => {
-    const session = mockSession();
-    const state = makeActivity({ responseText: "previous text" });
-    subscribeUIObserver(session, state);
+	it("resets responseText on message_start", () => {
+		const session = mockSession();
+		const tracker = new AgentActivityTracker();
+		subscribeUIObserver(session, tracker);
 
-    session.emit({ type: "message_start" });
-    expect(state.responseText).toBe("");
-  });
+		session.emit({ type: "message_update", assistantMessageEvent: { type: "text_delta", delta: "previous text" } });
+		session.emit({ type: "message_start" });
+		expect(tracker.responseText).toBe("");
+	});
 
-  it("appends to responseText on message_update text_delta and calls onUpdate", () => {
-    const session = mockSession();
-    const state = makeActivity();
-    const onUpdate = vi.fn();
-    subscribeUIObserver(session, state, onUpdate);
+	it("appends to responseText on message_update text_delta and calls onUpdate", () => {
+		const session = mockSession();
+		const tracker = new AgentActivityTracker();
+		let updateCount = 0;
+		subscribeUIObserver(session, tracker, () => updateCount++);
 
-    session.emit({
-      type: "message_update",
-      assistantMessageEvent: { type: "text_delta", delta: "Hello " },
-    });
-    expect(state.responseText).toBe("Hello ");
-    expect(onUpdate).toHaveBeenCalledOnce();
+		session.emit({
+			type: "message_update",
+			assistantMessageEvent: { type: "text_delta", delta: "Hello " },
+		});
+		expect(tracker.responseText).toBe("Hello ");
+		expect(updateCount).toBe(1);
 
-    session.emit({
-      type: "message_update",
-      assistantMessageEvent: { type: "text_delta", delta: "world" },
-    });
-    expect(state.responseText).toBe("Hello world");
-    expect(onUpdate).toHaveBeenCalledTimes(2);
-  });
+		session.emit({
+			type: "message_update",
+			assistantMessageEvent: { type: "text_delta", delta: "world" },
+		});
+		expect(tracker.responseText).toBe("Hello world");
+		expect(updateCount).toBe(2);
+	});
 
-  it("ignores message_update with non-text_delta events", () => {
-    const session = mockSession();
-    const state = makeActivity();
-    const onUpdate = vi.fn();
-    subscribeUIObserver(session, state, onUpdate);
+	it("ignores message_update with non-text_delta events", () => {
+		const session = mockSession();
+		const tracker = new AgentActivityTracker();
+		let updateCount = 0;
+		subscribeUIObserver(session, tracker, () => updateCount++);
 
-    session.emit({
-      type: "message_update",
-      assistantMessageEvent: { type: "tool_use", name: "Read" },
-    });
-    expect(state.responseText).toBe("");
-    expect(onUpdate).not.toHaveBeenCalled();
-  });
+		session.emit({
+			type: "message_update",
+			assistantMessageEvent: { type: "tool_use", name: "Read" },
+		});
+		expect(tracker.responseText).toBe("");
+		expect(updateCount).toBe(0);
+	});
 
-  it("increments turnCount on turn_end and calls onUpdate", () => {
-    const session = mockSession();
-    const state = makeActivity();
-    const onUpdate = vi.fn();
-    subscribeUIObserver(session, state, onUpdate);
+	it("increments turnCount on turn_end and calls onUpdate", () => {
+		const session = mockSession();
+		const tracker = new AgentActivityTracker();
+		let updateCount = 0;
+		subscribeUIObserver(session, tracker, () => updateCount++);
 
-    expect(state.turnCount).toBe(1);
-    session.emit({ type: "turn_end" });
-    expect(state.turnCount).toBe(2);
-    expect(onUpdate).toHaveBeenCalledOnce();
-  });
+		expect(tracker.turnCount).toBe(1);
+		session.emit({ type: "turn_end" });
+		expect(tracker.turnCount).toBe(2);
+		expect(updateCount).toBe(1);
+	});
 
-  it("accumulates lifetimeUsage on message_end with assistant usage", () => {
-    const session = mockSession();
-    const state = makeActivity();
-    const onUpdate = vi.fn();
-    subscribeUIObserver(session, state, onUpdate);
+	it("accumulates lifetimeUsage on message_end with assistant usage", () => {
+		const session = mockSession();
+		const tracker = new AgentActivityTracker();
+		let updateCount = 0;
+		subscribeUIObserver(session, tracker, () => updateCount++);
 
-    session.emit({
-      type: "message_end",
-      message: { role: "assistant", usage: { input: 100, output: 50, cacheWrite: 10 } },
-    });
-    expect(state.lifetimeUsage).toEqual({ input: 100, output: 50, cacheWrite: 10 });
-    expect(onUpdate).toHaveBeenCalledOnce();
+		session.emit({
+			type: "message_end",
+			message: { role: "assistant", usage: { input: 100, output: 50, cacheWrite: 10 } },
+		});
+		expect(tracker.lifetimeUsage).toEqual({ input: 100, output: 50, cacheWrite: 10 });
+		expect(updateCount).toBe(1);
 
-    session.emit({
-      type: "message_end",
-      message: { role: "assistant", usage: { input: 200, output: 80, cacheWrite: 20 } },
-    });
-    expect(state.lifetimeUsage).toEqual({ input: 300, output: 130, cacheWrite: 30 });
-  });
+		session.emit({
+			type: "message_end",
+			message: { role: "assistant", usage: { input: 200, output: 80, cacheWrite: 20 } },
+		});
+		expect(tracker.lifetimeUsage).toEqual({ input: 300, output: 130, cacheWrite: 30 });
+	});
 
-  it("ignores message_end without usage", () => {
-    const session = mockSession();
-    const state = makeActivity();
-    const onUpdate = vi.fn();
-    subscribeUIObserver(session, state, onUpdate);
+	it("ignores message_end without usage", () => {
+		const session = mockSession();
+		const tracker = new AgentActivityTracker();
+		let updateCount = 0;
+		subscribeUIObserver(session, tracker, () => updateCount++);
 
-    session.emit({ type: "message_end", message: { role: "assistant" } });
-    expect(state.lifetimeUsage).toEqual({ input: 0, output: 0, cacheWrite: 0 });
-    expect(onUpdate).not.toHaveBeenCalled();
-  });
+		session.emit({ type: "message_end", message: { role: "assistant" } });
+		expect(tracker.lifetimeUsage).toEqual({ input: 0, output: 0, cacheWrite: 0 });
+		expect(updateCount).toBe(0);
+	});
 
-  it("returned function unsubscribes from session", () => {
-    const session = mockSession();
-    const state = makeActivity();
-    const unsubscribe = subscribeUIObserver(session, state);
+	it("returned function unsubscribes from session", () => {
+		const session = mockSession();
+		const tracker = new AgentActivityTracker();
+		const unsubscribe = subscribeUIObserver(session, tracker);
 
-    session.emit({ type: "tool_execution_end", toolName: "Read" });
-    expect(state.toolUses).toBe(1);
+		session.emit({ type: "tool_execution_start", toolName: "Read" });
+		session.emit({ type: "tool_execution_end", toolName: "Read" });
+		expect(tracker.toolUses).toBe(1);
 
-    unsubscribe();
+		unsubscribe();
 
-    session.emit({ type: "tool_execution_end", toolName: "Write" });
-    expect(state.toolUses).toBe(1); // unchanged
-  });
+		session.emit({ type: "tool_execution_start", toolName: "Write" });
+		session.emit({ type: "tool_execution_end", toolName: "Write" });
+		expect(tracker.toolUses).toBe(1); // unchanged
+	});
 
-  it("works without onUpdate callback", () => {
-    const session = mockSession();
-    const state = makeActivity();
-    subscribeUIObserver(session, state);
+	it("works without onUpdate callback", () => {
+		const session = mockSession();
+		const tracker = new AgentActivityTracker();
+		subscribeUIObserver(session, tracker);
 
-    session.emit({ type: "tool_execution_start", toolName: "Read" });
-    session.emit({ type: "tool_execution_end", toolName: "Read" });
-    session.emit({ type: "turn_end" });
+		session.emit({ type: "tool_execution_start", toolName: "Read" });
+		session.emit({ type: "tool_execution_end", toolName: "Read" });
+		session.emit({ type: "turn_end" });
 
-    expect(state.toolUses).toBe(1);
-    expect(state.turnCount).toBe(2);
-  });
+		expect(tracker.toolUses).toBe(1);
+		expect(tracker.turnCount).toBe(2);
+	});
+
+	it("calls onUpdate on tool_execution_start", () => {
+		const session = mockSession();
+		const tracker = new AgentActivityTracker();
+		let updateCount = 0;
+		subscribeUIObserver(session, tracker, () => updateCount++);
+
+		session.emit({ type: "tool_execution_start", toolName: "Read" });
+		expect(updateCount).toBe(1);
+	});
+
+	it("calls onUpdate on tool_execution_end", () => {
+		const session = mockSession();
+		const tracker = new AgentActivityTracker();
+		let updateCount = 0;
+		subscribeUIObserver(session, tracker, () => updateCount++);
+
+		session.emit({ type: "tool_execution_start", toolName: "Read" });
+		updateCount = 0; // reset after start
+		session.emit({ type: "tool_execution_end", toolName: "Read" });
+		expect(updateCount).toBe(1);
+	});
 });
