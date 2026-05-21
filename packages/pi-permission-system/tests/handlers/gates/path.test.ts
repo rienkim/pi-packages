@@ -164,7 +164,7 @@ describe("describePathGate", () => {
     expect(result.sessionApproval).toHaveProperty("pattern");
   });
 
-  it("descriptor messages reference the file path", () => {
+  it("descriptor denialContext references the file path and tool name", () => {
     const checkPermission = vi
       .fn<CheckPermissionFn>()
       .mockReturnValue(
@@ -175,8 +175,12 @@ describe("describePathGate", () => {
       checkPermission,
       getSessionRuleset,
     ) as GateDescriptor;
-    expect(result.messages!.denyReason).toContain(".env");
-    expect(result.messages!.unavailableReason).toContain(".env");
+    expect(result.denialContext).toEqual({
+      kind: "path",
+      toolName: "read",
+      pathValue: ".env",
+      agentName: undefined,
+    });
   });
 
   it("descriptor decision uses surface 'path' and the file path as value", () => {

@@ -1,10 +1,6 @@
 import { getPathBearingToolPath, PATH_BEARING_TOOLS } from "../../path-utils";
 import { suggestSessionPattern } from "../../pattern-suggest";
-import {
-  formatAskPrompt,
-  formatDenyReason,
-  formatUserDeniedReason,
-} from "../../permission-prompts";
+import { formatAskPrompt } from "../../permission-prompts";
 import { getPermissionLogContext } from "../../tool-input-preview";
 import type { PermissionCheckResult } from "../../types";
 import type { GateDescriptor } from "./descriptor";
@@ -48,18 +44,6 @@ export function describeToolGate(
     deriveSuggestionValue(tcc, check),
   );
 
-  // Build the unavailable-reason message. Bash gets the command embedded.
-  const inputCommand =
-    tcc.toolName === "bash" &&
-    typeof (tcc.input as Record<string, unknown>)?.command === "string"
-      ? ((tcc.input as Record<string, unknown>).command as string)
-      : null;
-  const unavailableReason = inputCommand
-    ? `Running bash command '${inputCommand}' requires approval, but no interactive UI is available.`
-    : tcc.toolName === "mcp"
-      ? "Using tool 'mcp' requires approval, but no interactive UI is available."
-      : `Using tool '${tcc.toolName}' requires approval, but no interactive UI is available.`;
-
   const askMessage = formatAskPrompt(
     check,
     tcc.agentName ?? undefined,
@@ -69,11 +53,11 @@ export function describeToolGate(
   return {
     surface: tcc.toolName,
     input: tcc.input,
-    messages: {
-      denyReason: formatDenyReason(check, tcc.agentName ?? undefined),
-      unavailableReason,
-      userDeniedReason: (decision) =>
-        formatUserDeniedReason(check, decision.denialReason),
+    denialContext: {
+      kind: "tool",
+      check,
+      agentName: tcc.agentName ?? undefined,
+      input: tcc.input,
     },
     sessionApproval: {
       surface: suggestion.surface,

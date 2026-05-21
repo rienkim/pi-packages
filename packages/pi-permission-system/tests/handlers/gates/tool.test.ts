@@ -80,50 +80,33 @@ describe("describeToolGate", () => {
     expect(desc.decision.value).toBe("server:tool");
   });
 
-  it("populates messages.denyReason via formatDenyReason", () => {
+  it("populates denialContext with kind 'tool' and check result", () => {
     const check = makeCheckResult("deny", { toolName: "read" });
     const desc = describeToolGate(makeTcc(), check);
-    expect(desc.messages!.denyReason).toContain("read");
-    expect(desc.messages!.denyReason).toContain("not permitted");
+    expect(desc.denialContext).toEqual({
+      kind: "tool",
+      check,
+      agentName: undefined,
+      input: {},
+    });
   });
 
-  it("populates messages.unavailableReason with bash command when tool is bash", () => {
-    const check = makeCheckResult("ask", {
-      toolName: "bash",
-      command: "rm -rf /",
-    });
+  it("populates denialContext with agent name when provided", () => {
+    const check = makeCheckResult("ask", { toolName: "read" });
+    const desc = describeToolGate(makeTcc({ agentName: "my-agent" }), check);
+    expect(desc.denialContext!.agentName).toBe("my-agent");
+  });
+
+  it("populates denialContext with input for tool context", () => {
+    const check = makeCheckResult("ask", { toolName: "bash", command: "ls" });
     const desc = describeToolGate(
-      makeTcc({ toolName: "bash", input: { command: "rm -rf /" } }),
+      makeTcc({ toolName: "bash", input: { command: "ls" } }),
       check,
     );
-    expect(desc.messages!.unavailableReason).toContain("rm -rf /");
-    expect(desc.messages!.unavailableReason).toContain("no interactive UI");
-  });
-
-  it("populates messages.unavailableReason with tool name for non-bash tools", () => {
-    const desc = describeToolGate(
-      makeTcc({ toolName: "write" }),
-      makeCheckResult("ask"),
-    );
-    expect(desc.messages!.unavailableReason).toContain("write");
-    expect(desc.messages!.unavailableReason).toContain("no interactive UI");
-  });
-
-  it("populates messages.unavailableReason with mcp for mcp tool", () => {
-    const check = makeCheckResult("ask", { toolName: "mcp", target: "s:t" });
-    const desc = describeToolGate(makeTcc({ toolName: "mcp" }), check);
-    expect(desc.messages!.unavailableReason).toContain("mcp");
-  });
-
-  it("populates messages.userDeniedReason as a function", () => {
-    const check = makeCheckResult("ask", { toolName: "read" });
-    const desc = describeToolGate(makeTcc(), check);
-    const reason = desc.messages!.userDeniedReason({
-      approved: false,
-      state: "denied",
-      denialReason: "too risky",
+    expect(desc.denialContext).toMatchObject({
+      kind: "tool",
+      input: { command: "ls" },
     });
-    expect(reason).toContain("too risky");
   });
 
   it("populates sessionApproval via suggestSessionPattern", () => {

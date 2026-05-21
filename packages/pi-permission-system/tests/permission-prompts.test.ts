@@ -7,14 +7,11 @@ vi.mock("../src/tool-input-preview.js", () => ({
 
 import {
   formatAskPrompt,
-  formatDenyReason,
   formatMissingToolNameReason,
-  formatPermissionHardStopHint,
   formatSkillAskPrompt,
   formatSkillPathAskPrompt,
   formatSkillPathDenyReason,
   formatUnknownToolReason,
-  formatUserDeniedReason,
 } from "../src/permission-prompts";
 import type { SkillPromptEntry } from "../src/skill-prompt-sanitizer";
 import { formatToolInputForPrompt } from "../src/tool-input-preview";
@@ -103,89 +100,6 @@ describe("formatUnknownToolReason", () => {
     const tools = Array.from({ length: 15 }, (_, i) => `tool${i}`);
     const result = formatUnknownToolReason("ghost", tools);
     expect(result).toContain("...");
-  });
-});
-
-describe("formatPermissionHardStopHint", () => {
-  test("returns MCP-specific message for mcp tool with target", () => {
-    const result = formatPermissionHardStopHint(mcpResult("server:tool"));
-    expect(result).toContain("MCP permission denial");
-  });
-
-  test("returns MCP-specific message for mcp source with target", () => {
-    const result = formatPermissionHardStopHint(
-      toolResult("anything", { source: "mcp", target: "server:tool" }),
-    );
-    expect(result).toContain("MCP permission denial");
-  });
-
-  test("returns generic message for non-MCP tools", () => {
-    const result = formatPermissionHardStopHint(toolResult("read"));
-    expect(result).toContain("Hard stop");
-    expect(result).not.toContain("MCP");
-  });
-});
-
-describe("formatDenyReason", () => {
-  test("includes tool name and hard stop hint", () => {
-    const result = formatDenyReason(toolResult("read"));
-    expect(result).toContain("read");
-    expect(result).toContain("Hard stop");
-  });
-
-  test("includes agent name when provided", () => {
-    const result = formatDenyReason(toolResult("write"), "my-agent");
-    expect(result).toContain("Agent 'my-agent'");
-  });
-
-  test("includes MCP target for mcp results", () => {
-    const result = formatDenyReason(mcpResult("server:do-thing"));
-    expect(result).toContain("server:do-thing");
-    expect(result).toContain("MCP");
-  });
-
-  test("includes bash command when present", () => {
-    const result = formatDenyReason(
-      toolResult("bash", { command: "rm -rf /" }),
-    );
-    expect(result).toContain("rm -rf /");
-  });
-
-  test("includes matched pattern when present", () => {
-    const result = formatDenyReason(
-      toolResult("bash", { command: "rm -rf /", matchedPattern: "rm *" }),
-    );
-    expect(result).toContain("matched 'rm *'");
-  });
-});
-
-describe("formatUserDeniedReason", () => {
-  test("mentions tool name for generic tools", () => {
-    const result = formatUserDeniedReason(toolResult("read"));
-    expect(result).toContain("read");
-    expect(result).toContain("Hard stop");
-  });
-
-  test("mentions bash command for bash results", () => {
-    const result = formatUserDeniedReason(
-      toolResult("bash", { command: "ls -la" }),
-    );
-    expect(result).toContain("ls -la");
-  });
-
-  test("mentions MCP target for mcp results", () => {
-    const result = formatUserDeniedReason(mcpResult("server:query"));
-    expect(result).toContain("server:query");
-  });
-
-  test("appends denial reason when provided", () => {
-    const result = formatUserDeniedReason(toolResult("read"), "too sensitive");
-    expect(result).toContain("Reason: too sensitive");
-  });
-
-  test("omits reason suffix when not provided", () => {
-    const result = formatUserDeniedReason(toolResult("read"));
-    expect(result).not.toContain("Reason:");
   });
 });
 

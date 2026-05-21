@@ -1,3 +1,4 @@
+import { formatDenyReason } from "../../denial-messages";
 import { getPathBearingToolPath } from "../../path-utils";
 import type { Rule } from "../../rule";
 import { deriveApprovalPattern } from "../../session-rules";
@@ -49,19 +50,11 @@ export function describePathGate(
   const descriptor: GateDescriptor = {
     surface: "path",
     input: { path: filePath },
-    messages: {
-      denyReason: formatPathDenyReason(
-        tcc.toolName,
-        filePath,
-        tcc.agentName ?? undefined,
-      ),
-      unavailableReason: `Accessing '${filePath}' requires approval, but no interactive UI is available.`,
-      userDeniedReason: (decision) => {
-        const reasonSuffix = decision.denialReason
-          ? ` Reason: ${decision.denialReason}.`
-          : "";
-        return `User denied access to path '${filePath}'.${reasonSuffix} Hard stop: this path permission denial is policy-enforced. Do not retry this path, do not attempt a filesystem bypass, and report the block to the user.`;
-      },
+    denialContext: {
+      kind: "path",
+      toolName: tcc.toolName,
+      pathValue: filePath,
+      agentName: tcc.agentName ?? undefined,
     },
     sessionApproval: {
       surface: "path",
@@ -96,13 +89,15 @@ export function describePathGate(
   return descriptor;
 }
 
+/**
+ * @deprecated Delegated to denial-messages.ts — kept until bash-path.ts migrates.
+ */
 export function formatPathDenyReason(
   toolName: string,
   pathValue: string,
   agentName?: string,
 ): string {
-  const subject = agentName ? `Agent '${agentName}'` : "Current agent";
-  return `${subject} is not permitted to access path '${pathValue}' via tool '${toolName}'. Hard stop: this path permission denial is policy-enforced. Do not retry this path, do not attempt a filesystem bypass, and report the block to the user.`;
+  return formatDenyReason({ kind: "path", toolName, pathValue, agentName });
 }
 
 export function formatPathAskPrompt(
