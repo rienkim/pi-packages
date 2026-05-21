@@ -86,18 +86,13 @@ export async function runGateCheck(
         : undefined
     : undefined;
 
-  // Construct messages from denialContext (preferred) or fall back to legacy messages.
-  const messages = descriptor.denialContext
-    ? {
-        denyReason: formatDenyReason(descriptor.denialContext),
-        unavailableReason: formatUnavailableReason(descriptor.denialContext),
-        userDeniedReason: (decision: PermissionPromptDecision) =>
-          formatUserDeniedReason(
-            descriptor.denialContext!,
-            decision.denialReason,
-          ),
-      }
-    : descriptor.messages!;
+  // Construct messages from the centralized formatter.
+  const messages = {
+    denyReason: formatDenyReason(descriptor.denialContext),
+    unavailableReason: formatUnavailableReason(descriptor.denialContext),
+    userDeniedReason: (decision: PermissionPromptDecision) =>
+      formatUserDeniedReason(descriptor.denialContext, decision.denialReason),
+  };
 
   let autoApproved = false;
   const gateResult = await applyPermissionGate({

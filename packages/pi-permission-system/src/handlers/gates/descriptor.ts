@@ -1,9 +1,6 @@
 import type { DenialContext } from "../../denial-messages";
 import type { PermissionPromptDecision } from "../../permission-dialog";
-import type {
-  PermissionDecisionEvent,
-  PermissionDecisionResolution,
-} from "../../permission-events";
+import type { PermissionDecisionEvent } from "../../permission-events";
 import type { PromptPermissionDetails } from "../../permission-prompter";
 import type { Rule } from "../../rule";
 import type { PermissionCheckResult, PermissionState } from "../../types";
@@ -22,14 +19,8 @@ export interface GateDescriptor {
   surface: string;
   /** Input passed to checkPermission. */
   input: unknown;
-  /** Message strings/factories for each outcome (legacy — migrate to denialContext). */
-  messages?: {
-    denyReason: string;
-    unavailableReason: string;
-    userDeniedReason: (decision: PermissionPromptDecision) => string;
-  };
   /** Structured denial context — the runner formats messages from this. */
-  denialContext?: DenialContext;
+  denialContext: DenialContext;
   /**
    * Session-approval suggestion for "for this session" option.
    * Single pattern or multiple patterns (bash external-directory gate).

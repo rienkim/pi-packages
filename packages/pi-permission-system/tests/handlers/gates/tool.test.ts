@@ -1,6 +1,5 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 
-import type { GateDescriptor } from "../../../src/handlers/gates/descriptor";
 import { describeToolGate } from "../../../src/handlers/gates/tool";
 import type { ToolCallContext } from "../../../src/handlers/gates/types";
 import type { PermissionCheckResult } from "../../../src/types";

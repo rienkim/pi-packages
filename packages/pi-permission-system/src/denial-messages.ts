@@ -51,12 +51,12 @@ export type DenialContext =
 
 /** Format the block reason when permission policy denies an operation. */
 export function formatDenyReason(ctx: DenialContext): string {
-  return `${buildDenyBody(ctx)} ${EXTENSION_TAG}`;
+  return `${EXTENSION_TAG} ${buildDenyBody(ctx)}`;
 }
 
 /** Format the block reason when no interactive UI is available to prompt. */
 export function formatUnavailableReason(ctx: DenialContext): string {
-  return `${buildUnavailableBody(ctx)} ${EXTENSION_TAG}`;
+  return `${EXTENSION_TAG} ${buildUnavailableBody(ctx)}`;
 }
 
 /** Format the block reason when the user denies at an interactive prompt. */
@@ -64,7 +64,7 @@ export function formatUserDeniedReason(
   ctx: DenialContext,
   denialReason?: string,
 ): string {
-  return `${buildUserDeniedBody(ctx, denialReason)} ${EXTENSION_TAG}`;
+  return `${EXTENSION_TAG} ${buildUserDeniedBody(ctx, denialReason)}`;
 }
 
 // ── Private body builders ──────────────────────────────────────────────────

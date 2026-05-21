@@ -17,10 +17,9 @@ function makeDescriptor(
   return {
     surface: "read",
     input: {},
-    messages: {
-      denyReason: "Tool 'read' is denied.",
-      unavailableReason: "No UI available.",
-      userDeniedReason: (d) => `User denied. ${d.denialReason ?? ""}`,
+    denialContext: {
+      kind: "tool",
+      check: makeCheckResult("deny"),
     },
     promptDetails: {
       source: "tool_call",
@@ -457,40 +456,6 @@ describe("runGateCheck", () => {
       if (result.action === "block") {
         expect(result.reason).toContain(EXTENSION_TAG);
         expect(result.reason).toContain("too risky");
-      }
-    });
-
-    it("prefers denialContext over legacy messages when both are present", async () => {
-      const deps = makeRunnerDeps({
-        checkPermission: vi.fn().mockReturnValue(makeCheckResult("deny")),
-      });
-      const ctx: DenialContext = {
-        kind: "tool",
-        check: makeCheckResult("deny"),
-      };
-      const descriptor = makeDenialContextDescriptor(ctx, {
-        messages: {
-          denyReason: "LEGACY DENY",
-          unavailableReason: "LEGACY UNAVAILABLE",
-          userDeniedReason: () => "LEGACY USER DENIED",
-        },
-      });
-      const result = await runGateCheck(descriptor, null, "tc-1", deps);
-      expect(result.action).toBe("block");
-      if (result.action === "block") {
-        expect(result.reason).not.toContain("LEGACY");
-        expect(result.reason).toContain(EXTENSION_TAG);
-      }
-    });
-
-    it("falls back to legacy messages when denialContext is absent", async () => {
-      const deps = makeRunnerDeps({
-        checkPermission: vi.fn().mockReturnValue(makeCheckResult("deny")),
-      });
-      const result = await runGateCheck(makeDescriptor(), null, "tc-1", deps);
-      expect(result.action).toBe("block");
-      if (result.action === "block") {
-        expect(result.reason).toBe("Tool 'read' is denied.");
       }
     });
   });
