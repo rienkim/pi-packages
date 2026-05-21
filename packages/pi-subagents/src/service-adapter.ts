@@ -86,11 +86,12 @@ export function createSubagentsService(deps: AdapterDeps): SubagentsService {
       if (!record || record.status !== "running") {
         return false;
       }
-      if (!record.session) {
+      const session = record.execution?.session ?? record.session;
+      if (!session) {
         // Session not ready yet — queue via manager for delivery once initialized
         return manager.queueSteer(id, message);
       }
-      await record.session.steer(message);
+      await session.steer(message);
       return true;
     },
 
@@ -123,7 +124,8 @@ export function toSubagentRecord(record: AgentRecord): SubagentRecord {
   if (record.result !== undefined) out.result = record.result;
   if (record.error !== undefined) out.error = record.error;
   if (record.completedAt !== undefined) out.completedAt = record.completedAt;
-  if (record.worktreeResult !== undefined) out.worktreeResult = record.worktreeResult;
+  const worktreeResult = record.worktreeState?.cleanupResult ?? record.worktreeResult;
+  if (worktreeResult !== undefined) out.worktreeResult = worktreeResult;
 
   return out;
 }

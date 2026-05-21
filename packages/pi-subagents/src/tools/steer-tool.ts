@@ -48,7 +48,8 @@ export function createSteerTool(deps: SteerToolDeps) {
           `Agent "${params.agent_id}" is not running (status: ${record.status}). Cannot steer a non-running agent.`,
         );
       }
-      if (!record.session) {
+      const session = record.execution?.session ?? record.session;
+      if (!session) {
         // Session not ready yet — queue via manager for delivery once initialized
         deps.queueSteer(record.id, params.message);
         deps.emitEvent("subagents:steered", { id: record.id, message: params.message });
@@ -58,10 +59,10 @@ export function createSteerTool(deps: SteerToolDeps) {
       }
 
       try {
-        await deps.steerAgent(record.session, params.message);
+        await deps.steerAgent(session, params.message);
         deps.emitEvent("subagents:steered", { id: record.id, message: params.message });
         const tokens = formatLifetimeTokens(record);
-        const contextPercent = getSessionContextPercent(record.session);
+        const contextPercent = getSessionContextPercent(session);
         const stateParts: string[] = [];
         if (tokens) stateParts.push(tokens);
         stateParts.push(`${record.toolUses} tool ${record.toolUses === 1 ? "use" : "uses"}`);
