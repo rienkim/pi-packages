@@ -105,6 +105,16 @@ export class SettingsManager {
   }
 
   /**
+   * Set maxConcurrent, notify interested parties, persist, and return the toast.
+   * Owns the full consequence chain so callers just say what they want.
+   */
+  applyMaxConcurrent(n: number): { message: string; level: "info" | "warning" } {
+    this.maxConcurrent = n; // setter normalizes: max(1, n)
+    this.onMaxConcurrentChanged?.();
+    return this.saveAndNotify(`Max concurrency set to ${this.maxConcurrent}`);
+  }
+
+  /**
    * Persist the current snapshot, emit `subagents:settings_changed`,
    * and return the toast the UI should display.
    */

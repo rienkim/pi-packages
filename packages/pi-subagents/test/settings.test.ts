@@ -512,6 +512,47 @@ describe("SettingsManager", () => {
     });
   });
 
+  describe("applyMaxConcurrent()", () => {
+    let projectDir: string;
+    let originalAgentDirEnv: string | undefined;
+
+    beforeEach(() => {
+      projectDir = mkdtempSync(join(tmpdir(), "pi-sm-apply-"));
+      originalAgentDirEnv = process.env.PI_CODING_AGENT_DIR;
+      process.env.PI_CODING_AGENT_DIR = mkdtempSync(join(tmpdir(), "pi-sm-apply-global-"));
+    });
+
+    afterEach(() => {
+      if (originalAgentDirEnv == null) delete process.env.PI_CODING_AGENT_DIR;
+      else process.env.PI_CODING_AGENT_DIR = originalAgentDirEnv;
+      rmSync(projectDir, { recursive: true, force: true });
+    });
+
+    it("sets maxConcurrent, calls callback, persists, and returns info toast", () => {
+      const onChanged = vi.fn();
+      const sm = new SettingsManager({ emit: vi.fn(), cwd: projectDir, onMaxConcurrentChanged: onChanged });
+      const toast = sm.applyMaxConcurrent(8);
+      expect(sm.maxConcurrent).toBe(8);
+      expect(onChanged).toHaveBeenCalledOnce();
+      expect(toast).toEqual({ message: "Max concurrency set to 8", level: "info" });
+      const written = JSON.parse(readFileSync(join(projectDir, ".pi", "subagents.json"), "utf-8"));
+      expect(written.maxConcurrent).toBe(8);
+    });
+
+    it("normalizes 0 to 1 and reports the post-normalization value in the toast", () => {
+      const sm = new SettingsManager({ emit: vi.fn(), cwd: projectDir });
+      const toast = sm.applyMaxConcurrent(0);
+      expect(sm.maxConcurrent).toBe(1);
+      expect(toast.message).toBe("Max concurrency set to 1");
+    });
+
+    it("works without a callback — no throw, still persists and returns toast", () => {
+      const sm = new SettingsManager({ emit: vi.fn(), cwd: projectDir });
+      expect(() => sm.applyMaxConcurrent(6)).not.toThrow();
+      expect(sm.maxConcurrent).toBe(6);
+    });
+  });
+
   describe("constructor onMaxConcurrentChanged callback", () => {
     it("constructs without callback without throwing", () => {
       expect(() => new SettingsManager({ emit: vi.fn(), cwd: "/tmp" })).not.toThrow();
