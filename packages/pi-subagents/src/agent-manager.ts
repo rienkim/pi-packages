@@ -18,6 +18,7 @@ import { subscribeRecordObserver } from "./record-observer.js";
 import type { RunConfig } from "./runtime.js";
 import type { AgentInvocation, IsolationMode, ParentSnapshot, ShellExec, SubagentType, ThinkingLevel } from "./types.js";
 import type { WorktreeManager } from "./worktree.js";
+import { WorktreeState } from "./worktree-state.js";
 
 export type OnAgentComplete = (record: AgentRecord) => void;
 export type OnAgentStart = (record: AgentRecord) => void;
@@ -173,6 +174,8 @@ export class AgentManager {
           'Initialize git and commit at least once, or omit `isolation`.',
         );
       }
+      record.worktreeState = new WorktreeState(wt);
+      // Keep legacy field in sync during migration
       record.worktree = wt;
       worktreeCwd = wt.path;
     }
@@ -232,8 +235,10 @@ export class AgentManager {
 
         // Clean up worktree before transition so the final result includes branch text
         let finalResult = responseText;
-        if (record.worktree) {
-          const wtResult = this.worktrees.cleanup(record.worktree, options.description);
+        if (record.worktreeState) {
+          const wtResult = this.worktrees.cleanup(record.worktreeState, options.description);
+          record.worktreeState.recordCleanup(wtResult);
+          // Keep legacy field in sync during migration
           record.worktreeResult = wtResult;
           if (wtResult.hasChanges && wtResult.branch) {
             finalResult += `\n\n---\nChanges saved to branch \`${wtResult.branch}\`. Merge with: \`git merge ${wtResult.branch}\``;
@@ -262,9 +267,11 @@ export class AgentManager {
         detach();
 
         // Best-effort worktree cleanup on error
-        if (record.worktree) {
+        if (record.worktreeState) {
           try {
-            const wtResult = this.worktrees.cleanup(record.worktree, options.description);
+            const wtResult = this.worktrees.cleanup(record.worktreeState, options.description);
+            record.worktreeState.recordCleanup(wtResult);
+            // Keep legacy field in sync during migration
             record.worktreeResult = wtResult;
           } catch (err) { debugLog("cleanupWorktree on agent error", err); }
         }

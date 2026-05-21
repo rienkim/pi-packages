@@ -595,6 +595,46 @@ describe("AgentManager — dependency injection via options bag", () => {
 
     expect(worktrees.cleanup).toHaveBeenCalledOnce();
   });
+
+  it("sets record.worktreeState with path and branch from worktrees.create", async () => {
+    const worktrees: WorktreeManager = {
+      create: vi.fn().mockReturnValue({ path: "/tmp/wt", branch: "pi-agent-x" }),
+      cleanup: vi.fn(() => ({ hasChanges: false })),
+      prune: vi.fn(),
+    };
+    ({ manager } = createManager({ worktrees }));
+
+    const id = manager.spawn(mockCtx, "general-purpose", "test", {
+      description: "test",
+      isolation: "worktree",
+      isBackground: true,
+    });
+    await manager.getRecord(id)!.promise;
+
+    const record = manager.getRecord(id)!;
+    expect(record.worktreeState).toBeDefined();
+    expect(record.worktreeState!.path).toBe("/tmp/wt");
+    expect(record.worktreeState!.branch).toBe("pi-agent-x");
+  });
+
+  it("records cleanup result on worktreeState after completion", async () => {
+    const worktrees: WorktreeManager = {
+      create: vi.fn().mockReturnValue({ path: "/tmp/wt", branch: "pi-agent-x" }),
+      cleanup: vi.fn(() => ({ hasChanges: true, branch: "pi-agent-x" })),
+      prune: vi.fn(),
+    };
+    ({ manager } = createManager({ worktrees }));
+
+    const id = manager.spawn(mockCtx, "general-purpose", "test", {
+      description: "test",
+      isolation: "worktree",
+      isBackground: true,
+    });
+    await manager.getRecord(id)!.promise;
+
+    const record = manager.getRecord(id)!;
+    expect(record.worktreeState!.cleanupResult).toEqual({ hasChanges: true, branch: "pi-agent-x" });
+  });
 });
 
 describe("AgentManager — queueing and concurrency with injected stubs", () => {
