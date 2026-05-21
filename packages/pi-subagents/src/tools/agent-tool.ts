@@ -112,8 +112,8 @@ export interface AgentToolDeps {
   typeListText: string;
   availableTypesText: string;
   agentDir: string;
-  /** Returns the runtime default max turns (undefined = unlimited). */
-  getDefaultMaxTurns: () => number | undefined;
+  /** Narrow settings accessor — only the default max turns is needed here. */
+  settings: { readonly defaultMaxTurns: number | undefined };
 }
 
 // ---- Factory ----
@@ -364,7 +364,7 @@ Guidelines:
           ? (model?.name ?? effectiveModelId).replace(/^Claude\s+/i, "").toLowerCase()
           : undefined;
       const effectiveMaxTurns = normalizeMaxTurns(
-        resolvedConfig.maxTurns ?? deps.getDefaultMaxTurns(),
+        resolvedConfig.maxTurns ?? deps.settings.defaultMaxTurns,
       );
       const agentInvocation: AgentInvocation = {
         modelName,

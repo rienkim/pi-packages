@@ -199,7 +199,8 @@ export default function (pi: ExtensionAPI) {
     typeListText,
     availableTypesText: registry.getAvailableTypes().join(", "),
     agentDir: getAgentDir(),
-    getDefaultMaxTurns: () => runtime.defaultMaxTurns,
+    // Bridge: reads from runtime until SettingsManager is wired (Cycle 6, issue #109)
+    settings: { get defaultMaxTurns() { return runtime.defaultMaxTurns; } },
   })));
 
   // ---- get_subagent_result tool ----
