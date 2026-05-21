@@ -71,8 +71,9 @@ If the deviation is large, stop and ask.
    The fixup must NOT land in a `docs:` commit.
 4. Cross-check the plan's "Module-Level Changes" table against actually-changed files.
    If a listed file was not touched, update it now or note the deviation.
-5. Commit doc updates as `docs: <summary>`.
-6. **Do not edit `CHANGELOG.md`** — release-please owns it and will generate entries from your Conventional Commit messages on the next release.
+5. If `packages/<PKG>/docs/architecture/` exists, check whether the changes affect the module structure or data-flow descriptions and update them.
+6. Commit doc updates as `docs: <summary>`.
+7. **Do not edit `CHANGELOG.md`** — release-please owns it and will generate entries from your Conventional Commit messages on the next release.
 
 ## Summarize
 

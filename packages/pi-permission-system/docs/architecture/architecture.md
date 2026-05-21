@@ -479,12 +479,12 @@ src/
 │   ├── permission-gate-handler.ts PermissionGateHandler (session + events + toolRegistry); getEventInput + extractSkillNameFromInput pure helpers
 │   └── gates/               Pure descriptor factories + runner
 │       ├── types.ts          GateOutcome, ToolCallContext
-│       ├── descriptor.ts     GateDescriptor, GateBypass, GateResult, GateRunnerDeps types
-│       ├── runner.ts         runGateCheck() — single site for check→log→emit→approve
+│       ├── descriptor.ts     GateDescriptor (with DenialContext), GateBypass, GateResult, GateRunnerDeps types
+│       ├── runner.ts         runGateCheck() — single site for check→log→emit→approve; constructs messages from DenialContext via denial-messages.ts
 │       ├── helpers.ts        deriveDecisionValue, deriveResolution
 │       ├── skill-read.ts     describeSkillReadGate — pure descriptor factory
 │       ├── external-directory.ts describeExternalDirectoryGate — pure descriptor/bypass factory
-│       ├── external-directory-messages.ts External-directory prompt/deny/hint message formatting
+│       ├── external-directory-messages.ts External-directory ask-prompt formatting (denial messages moved to denial-messages.ts)
 │       ├── bash-external-directory.ts describeBashExternalDirectoryGate — pure descriptor/bypass factory
 │       ├── bash-path.ts      describeBashPathGate — async descriptor/bypass factory for bash path rules
 │       ├── bash-path-extractor.ts Tree-sitter-bash AST parser + external/rule path extraction
@@ -508,7 +508,8 @@ src/
 ├── node-modules-discovery.ts  Global node_modules resolution (walk-up + npm root -g fallback)
 ├── system-prompt-sanitizer.ts Remove denied tools from system prompt
 ├── skill-prompt-sanitizer.ts  Skill prompt filtering by policy
-├── permission-prompts.ts      User-facing message formatting per surface
+├── denial-messages.ts         Centralized denial message formatter — DenialContext type, EXTENSION_TAG, formatDenyReason/formatUnavailableReason/formatUserDeniedReason
+├── permission-prompts.ts      User-facing ask-prompt formatting + pre-check error messages
 ├── tool-input-preview.ts      Loggable context from tool inputs
 ├── tool-registry.ts           ToolRegistry interface + tool name validation
 ├── active-agent.ts            Agent name detection from session/system prompt

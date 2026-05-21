@@ -60,3 +60,5 @@ Released as `pi-permission-system` v7.0.0 (breaking: `GateDescriptor.messages` r
 1. `.pi/prompts/plan-issue.md` — expanded sibling-convention grep rule to include agent-facing message formatting (attribution tags, error prefixes, log labels).
 2. `.pi/prompts/plan-issue.md` — added note that `docs/plans/archive/` files use issue numbers from a previous repository and should be ignored when resolving conflicts.
 3. `.pi/skills/testing/SKILL.md` — added strong-assertion preference rule: prefer `toBe`/`toEqual` over subset matchers; comment when weak assertions are necessary.
+4. `packages/pi-permission-system/docs/architecture/architecture.md` — updated module structure: added `denial-messages.ts`, updated descriptions for `descriptor.ts`, `runner.ts`, `external-directory-messages.ts`, and `permission-prompts.ts`.
+5. `.pi/prompts/tdd-plan.md` — added step 5 to "After the last TDD step": check and update `docs/architecture/` when it exists.
