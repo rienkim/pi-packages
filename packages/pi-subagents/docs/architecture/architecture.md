@@ -17,6 +17,11 @@ This document describes the architecture of the pi-subagents fork: a focused, co
 6. **Snapshot, don't capture** — mutable parent state (ctx, session, model) is read once at spawn time and frozen into a `ParentSnapshot` data object.
    No live references survive past the spawn call.
 7. **Subscribe, don't thread** — observation of agent progress uses direct session-event subscription, not callback parameters threaded through multiple layers.
+8. **Construct complete** — objects are born with all their dependencies.
+   If state isn't available yet, the object that needs it doesn't exist yet.
+   No post-construction field writes from external code — if an object can't be instantiated ready-to-go, the prep work hasn't been done and the right dependencies haven't been identified.
+9. **State owns its mutations** — mutable state lives in a class whose methods enforce valid transitions and invariants.
+   Free functions that mutate module-scoped variables, closure-captured bags-of-functions, and external writes to shared interfaces are replaced by classes that encapsulate the state they manage.
 
 ## Current state
 
@@ -306,9 +311,17 @@ Created `SubagentRuntime` factory to hold session-scoped state.
 Move `ui/agent-widget.ts`, `ui/conversation-viewer.ts`, the `/agents` command, notifications, and activity tracking to a separate extension that consumes `SubagentsService` + lifecycle events.
 This phase is deferred until the API boundary is proven stable in production.
 
+### Phase 7: Encapsulation and dependency narrowing
+
+Target: every mutable state bag becomes a class, every dependency bag narrows to what its consumer uses, every callback becomes either a method on a collaborator or an event on an observable.
+
+The work is sequenced so each change makes the next change easy.
+See the [Encapsulation roadmap](#encapsulation-roadmap) section for the full breakdown.
+
 ## Structural refactoring roadmap
 
-All structural refactoring phases are complete.
+Phases 1–5 are complete.
+Phase 7 (encapsulation and dependency narrowing) is the active structural track.
 See `git log` for the full history; issue references are preserved below for traceability.
 
 | Phase              | Issue              | Summary                                                               |
@@ -353,6 +366,138 @@ Replaced three-layer callback threading with direct session subscriptions.
 | Callback layers                   | 3      | 0 (direct subscription) |
 | Live `ctx` references in queue    | 1      | 0 (snapshot)            |
 | Scattered status-transition sites | 6      | 1 (state machine)       |
+
+---
+
+## Encapsulation roadmap
+
+This section describes the Phase 7 targets: encapsulating mutable state into classes, replacing callbacks with semantic components, and narrowing dependency bags.
+
+Each step is sequenced so it makes the next step easier.
+
+### Current smells
+
+| Smell                      | Location                                  | Evidence                                                                                                                                                   |
+| -------------------------- | ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Global mutable state       | `agent-types.ts`                          | Module-scoped `Map` mutated by `registerAgents()`, read by 12 `resolveAgentConfig()` call sites                                                            |
+| Closure bag as class       | `createNotificationSystem()`              | Returns 4 functions sharing closure state (`pendingNudges`, timers)                                                                                        |
+| Mutable state bag          | `AgentActivity` (7 fields)                | Written by `ui-observer.ts`, read by widget, notification, agent-tool                                                                                      |
+| Settings relay             | `AgentMenuDeps` (13 fields)               | 6 fields are settings get/set pairs threaded through as callbacks                                                                                          |
+| Post-construction mutation | `AgentRecord` non-transition state        | `session`, `outputFile`, `worktree`, `promise` written by external code after construction                                                                 |
+| Fire-and-forget callbacks  | `AgentManagerOptions`                     | `onStart`, `onComplete`, `onCompact` wired as closures in `index.ts`                                                                                       |
+| Duplicate `SpawnOptions`   | `service.ts` + `agent-manager.ts`         | Two incompatible shapes (JSON-friendly vs runtime types) with the same name                                                                                |
+| Type dumping ground        | `types.ts`                                | `NotificationDetails` used only by notification/renderer; `DEFAULT_AGENT_NAMES` is a constant not a type; `AgentConfig` (21 fields) consumers use 2–4 each |
+| Wide dependency bags       | `AgentToolDeps` (9), `AgentMenuDeps` (13) | Many fields exist only because their natural owner doesn't exist yet                                                                                       |
+
+### Step A: Extract state into classes (foundation, parallel)
+
+These three extractions are independent and can proceed in any order.
+Each eliminates a category of global/closure state and gives orphaned callbacks a natural home.
+
+#### A1. `AgentTypeRegistry` class
+
+Wrap the module-scoped `agents` Map and free functions in `agent-types.ts` into an injectable class.
+`reloadCustomAgents` (currently a callback threaded through `AgentToolDeps` and `AgentMenuDeps`) becomes `registry.reload()`.
+`DEFAULT_AGENT_NAMES` moves from `types.ts` to the registry.
+
+Impact: eliminates global mutable state, enables test isolation without module resets, removes `reloadCustomAgents` callback from 2 dependency bags.
+
+#### A2. `SettingsManager` class
+
+Encapsulate the settings load/save/apply cycle into a class that owns the in-memory values and the persistence layer.
+Absorbs `SettingsAppliers`, `applyAndEmitLoaded`, `saveAndEmitChanged` from free functions in `settings.ts`.
+The 6 settings-related fields in `AgentMenuDeps` (`getDefaultMaxTurns`, `setDefaultMaxTurns`, `getGraceTurns`, `setGraceTurns`, `snapshotSettings`, `saveSettings`) collapse to a single `settings: SettingsManager` collaborator.
+
+Impact: reduces `AgentMenuDeps` from 13 → 8 fields.
+
+#### A3. `AgentActivityTracker` class
+
+Wrap the 7-field mutable `AgentActivity` interface with transition methods (`onToolStart()`, `onToolEnd()`, `onMessageUpdate()`, `onTurnEnd()`).
+`ui-observer.ts` calls tracker methods instead of writing raw fields.
+The notification system, widget, and agent-tool receive a proper collaborator instead of reaching into a shared `Map<string, AgentActivity>`.
+
+Impact: eliminates output-argument writes in `ui-observer.ts`, makes the mutation contract explicit.
+
+### Step B: Split `AgentRecord` lifecycle state
+
+`AgentRecord` is currently constructed in `spawn()` before most of its state exists, then mutated across 4 files as information trickles in.
+The fix is not setter methods — it's splitting along lifecycle boundaries so each object is born complete.
+
+- **`AgentRecord`** stays as identity + status state machine (what we know at spawn time).
+- **Execution state** (`session`, `promise`, `outputFile`) → a new object constructed when the runner creates the session, injected as a complete collaborator.
+- **Worktree state** (`worktree` info, cleanup result) → a new object constructed when isolation is set up, only exists for worktree agents.
+- **`pendingSteers`** moves to a queue on the manager (where they're buffered), not a field on the record.
+
+Each piece is born complete at the moment its information is available.
+The record doesn't accumulate half-baked state — it receives fully constructed collaborators.
+
+### Step C: Replace `AgentManager` callbacks with observer
+
+Replace the `onStart`/`onComplete`/`onCompact` callback parameters with an `AgentManagerObserver` interface (or typed event emitter).
+The observer methods receive the same data the callbacks receive today.
+`index.ts` constructs the observer once instead of building 3 closure callbacks that capture `runtime`, `pi`, `notifications`, etc.
+`AgentManagerOptions` drops from 8 → 5 fields.
+
+### Step D: Disambiguate `SpawnOptions` and narrow dependency bags
+
+With the registry class, settings manager, and observer in place, the dependency bags shrink naturally.
+
+#### D1. Disambiguate `SpawnOptions`
+
+Rename the internal `SpawnOptions` in `agent-manager.ts` to `AgentSpawnConfig` (or similar) to distinguish it from the JSON-friendly public `SpawnOptions` in `service.ts`.
+The two types serve different consumers and should not share a name.
+
+#### D2. Narrow `AgentToolDeps` and `AgentMenuDeps`
+
+| Bag             | Before    | After | How                                                                                     |
+| --------------- | --------- | ----- | --------------------------------------------------------------------------------------- |
+| `AgentToolDeps` | 9 fields  | ~5    | Registry owns reload; activity tracker is a collaborator; `emitEvent` moves to observer |
+| `AgentMenuDeps` | 13 fields | ~6    | Settings manager absorbs 6 fields; registry owns reload                                 |
+
+### Step E: Decompose large files and relocate types (parallel)
+
+#### E1. Split `agent-tool.ts` foreground/background
+
+Extract the foreground execution loop (spinner, streaming, result rendering) and background spawn path into separate modules.
+The 654-line file splits along a natural seam.
+
+#### E2. Type housekeeping
+
+- Move `NotificationDetails` from `types.ts` to `notification.ts`.
+- Move `DEFAULT_AGENT_NAMES` from `types.ts` to the registry.
+- Move `ParentSnapshot` from `types.ts` to `parent-snapshot.ts`.
+- Move `EnvInfo` from `types.ts` to `env.ts`.
+- Convert `createNotificationSystem` closure to `NotificationManager` class.
+- Convert `ConversationViewer` constructor from 6 positional parameters to an options bag.
+- Define narrow `AgentConfig` subset interfaces for consumers that use 2–4 fields of the 21-field type.
+
+### Expected impact
+
+| Metric                                     | Before                                                                            | After |
+| ------------------------------------------ | --------------------------------------------------------------------------------- | ----- |
+| Module-scoped mutable state                | 1 (`agent-types.ts` Map)                                                          | 0     |
+| Closure-bag "classes"                      | 2 (`createNotificationSystem`, settings free functions)                           | 0     |
+| Externally-mutated state bags              | 2 (`AgentActivity`, `AgentRecord` non-transition fields)                          | 0     |
+| `AgentManagerOptions` fields               | 8                                                                                 | 5     |
+| `AgentToolDeps` fields                     | 9                                                                                 | ~5    |
+| `AgentMenuDeps` fields                     | 13                                                                                | ~6    |
+| `SpawnOptions` callback fields             | 1 (`onSessionCreated`)                                                            | 0     |
+| Callbacks threaded through deps            | 8 (`reloadCustomAgents` ×2, `emitEvent` ×3, settings ×6, `getDefaultMaxTurns` ×2) | 0     |
+| Types in `types.ts` without a natural home | 4                                                                                 | 0     |
+
+### Dependency graph
+
+```text
+A1 (Registry) ──────────────────┐
+A2 (Settings) ──────────────────┤
+A3 (Activity Tracker) ───────────┤
+                                   ├── D2 (Narrow deps) ── E1 (agent-tool split)
+B  (Record lifecycle) ───────────┤
+  └── C (Observer) ────────────┤
+        └── D1 (SpawnOptions) ──┘
+
+E2 (Type housekeeping) ── can start after A1, runs parallel to later steps
+```
 
 ---
 
