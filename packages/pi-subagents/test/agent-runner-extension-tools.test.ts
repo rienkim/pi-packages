@@ -74,8 +74,11 @@ vi.mock("../src/agent-types.js", async (importOriginal) => ({
 
 /** Mock AgentConfigLookup injected via RunOptions.registry. */
 const mockAgentLookup = {
-  resolveAgentConfig: vi.fn(() => agentConfigMock.current),
-  getToolNamesForType: vi.fn(() => agentConfigMock.current.builtinToolNames ?? ["read"]),
+  resolveAgentConfig: vi.fn((): import("../src/types.js").AgentConfig => ({
+    ...agentConfigMock.current,
+    promptMode: agentConfigMock.current.promptMode as "replace" | "append",
+  })),
+  getToolNamesForType: vi.fn((): string[] => agentConfigMock.current.builtinToolNames ?? ["read"]),
 };
 
 vi.mock("../src/env.js", () => ({

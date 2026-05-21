@@ -1,13 +1,17 @@
 import { describe, expect, it, vi } from "vitest";
+import { AgentTypeRegistry } from "../../src/agent-types.js";
 import { createGetResultTool } from "../../src/tools/get-result-tool.js";
 import type { AgentRecord } from "../../src/types.js";
 import { createTestRecord } from "../helpers/make-record.js";
+
+const testRegistry = new AgentTypeRegistry(() => new Map());
 
 function makeDeps(records: Map<string, AgentRecord> = new Map()) {
   return {
     getRecord: (id: string) => records.get(id),
     cancelNudge: vi.fn(),
     getConversation: vi.fn(),
+    registry: testRegistry,
   };
 }
 

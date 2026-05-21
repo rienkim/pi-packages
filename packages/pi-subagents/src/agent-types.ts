@@ -134,76 +134,6 @@ export class AgentTypeRegistry implements AgentConfigLookup {
 /** All known built-in tool names. */
 export const BUILTIN_TOOL_NAMES: string[] = ["read", "bash", "edit", "write", "grep", "find", "ls"];
 
-/** Unified runtime registry of all agents (defaults + user-defined). */
-const agents = new Map<string, AgentConfig>();
-
-/**
- * Register agents into the unified registry.
- * Starts with DEFAULT_AGENTS, then overlays user agents (overrides defaults with same name).
- * Disabled agents (enabled === false) are kept in the registry but excluded from spawning.
- */
-export function registerAgents(userAgents: Map<string, AgentConfig>): void {
-  agents.clear();
-
-  // Start with defaults
-  for (const [name, config] of DEFAULT_AGENTS) {
-    agents.set(name, config);
-  }
-
-  // Overlay user agents (overrides defaults with same name)
-  for (const [name, config] of userAgents) {
-    agents.set(name, config);
-  }
-}
-
-/** Case-insensitive key resolution. */
-function resolveKey(name: string): string | undefined {
-  if (agents.has(name)) return name;
-  const lower = name.toLowerCase();
-  for (const key of agents.keys()) {
-    if (key.toLowerCase() === lower) return key;
-  }
-  return undefined;
-}
-
-/** Resolve a type name case-insensitively. Returns the canonical key or undefined. */
-export function resolveType(name: string): string | undefined {
-  return resolveKey(name);
-}
-
-/** Get all enabled type names (for spawning and tool descriptions). */
-export function getAvailableTypes(): string[] {
-  return [...agents.entries()]
-    .filter(([_, config]) => config.enabled !== false)
-    .map(([name]) => name);
-}
-
-/** Get all type names including disabled (for UI listing). */
-export function getAllTypes(): string[] {
-  return [...agents.keys()];
-}
-
-/** Get names of default agents currently in the registry. */
-export function getDefaultAgentNames(): string[] {
-  return [...agents.entries()]
-    .filter(([_, config]) => config.isDefault === true)
-    .map(([name]) => name);
-}
-
-/** Get names of user-defined agents (non-defaults) currently in the registry. */
-export function getUserAgentNames(): string[] {
-  return [...agents.entries()]
-    .filter(([_, config]) => config.isDefault !== true)
-    .map(([name]) => name);
-}
-
-/** Check if a type is valid and enabled (case-insensitive). */
-export function isValidType(type: string): boolean {
-  const key = resolveKey(type);
-  if (!key) return false;
-  return agents.get(key)?.enabled !== false;
-}
-
 /** Tool names required for memory management. */
 const MEMORY_TOOL_NAMES = ["read", "write", "edit"];
 
@@ -222,40 +152,4 @@ const READONLY_MEMORY_TOOL_NAMES = ["read"];
  */
 export function getReadOnlyMemoryToolNames(existingToolNames: Set<string>): string[] {
   return READONLY_MEMORY_TOOL_NAMES.filter(n => !existingToolNames.has(n));
-}
-
-/** Get built-in tool names for a type (case-insensitive). */
-export function getToolNamesForType(type: string): string[] {
-  const key = resolveKey(type);
-  const raw = key ? agents.get(key) : undefined;
-  const config = raw?.enabled !== false ? raw : undefined;
-  const names = config?.builtinToolNames?.length ? config.builtinToolNames : [...BUILTIN_TOOL_NAMES];
-  return names;
-}
-
-/** Resolve agent config with guaranteed non-null return. Falls back: unknown → general-purpose → absolute fallback. */
-export function resolveAgentConfig(type: string): AgentConfig {
-  const key = resolveKey(type);
-  const config = key ? agents.get(key) : undefined;
-  if (config) {
-    return config;
-  }
-
-  // Fallback to general-purpose for unknown types
-  const gp = agents.get("general-purpose");
-  if (gp) {
-    return gp;
-  }
-
-  // Absolute fallback (should never happen in practice)
-  return {
-    name: type,
-    displayName: "Agent",
-    description: "General-purpose agent for complex, multi-step tasks",
-    builtinToolNames: BUILTIN_TOOL_NAMES,
-    extensions: true,
-    skills: true,
-    systemPrompt: "",
-    promptMode: "append",
-  };
 }

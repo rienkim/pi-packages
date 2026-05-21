@@ -14,7 +14,7 @@ import { join } from "node:path";
 import { defineTool, type ExtensionAPI, getAgentDir } from "@earendil-works/pi-coding-agent";
 import { AgentManager } from "./agent-manager.js";
 import { getAgentConversation, normalizeMaxTurns, resumeAgent, runAgent, steerAgent } from "./agent-runner.js";
-import { AgentTypeRegistry, getAvailableTypes, getDefaultAgentNames, getUserAgentNames, resolveAgentConfig, } from "./agent-types.js";
+import { AgentTypeRegistry } from "./agent-types.js";
 import { loadCustomAgents } from "./custom-agents.js";
 import { SessionLifecycleHandler, ToolStartHandler } from "./handlers/index.js";
 import { type ModelRegistry, resolveModel } from "./model-resolver.js";
@@ -41,9 +41,6 @@ export default function (pi: ExtensionAPI) {
   pi.registerMessageRenderer<NotificationDetails>("subagent-notification", createNotificationRenderer());
 
   const registry = new AgentTypeRegistry(() => loadCustomAgents(process.cwd()));
-
-  /** Reload agents from .pi/agents/*.md and merge with defaults (called on init and each Agent invocation). */
-  const reloadCustomAgents = () => registry.reload();
 
   // ---- Runtime: all mutable extension state in one place ----
   const runtime = createSubagentRuntime();
@@ -142,17 +139,17 @@ export default function (pi: ExtensionAPI) {
 
   /** Build the full type list text dynamically from the unified registry. */
   const buildTypeListText = () => {
-    const defaultNames = getDefaultAgentNames();
-    const userNames = getUserAgentNames();
+    const defaultNames = registry.getDefaultAgentNames();
+    const userNames = registry.getUserAgentNames();
 
     const defaultDescs = defaultNames.map((name) => {
-      const cfg = resolveAgentConfig(name);
+      const cfg = registry.resolveAgentConfig(name);
       const modelSuffix = cfg.model ? ` (${getModelLabelFromConfig(cfg.model)})` : "";
       return `- ${name}: ${cfg.description}${modelSuffix}`;
     });
 
     const customDescs = userNames.map((name) => {
-      const cfg = resolveAgentConfig(name);
+      const cfg = registry.resolveAgentConfig(name);
       return `- ${name}: ${cfg.description}`;
     });
 
@@ -200,7 +197,7 @@ export default function (pi: ExtensionAPI) {
     emitEvent: (name, data) => pi.events.emit(name, data),
     registry,
     typeListText,
-    availableTypesText: getAvailableTypes().join(", "),
+    availableTypesText: registry.getAvailableTypes().join(", "),
     agentDir: getAgentDir(),
     getDefaultMaxTurns: () => runtime.defaultMaxTurns,
   })));

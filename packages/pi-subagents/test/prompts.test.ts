@@ -1,7 +1,9 @@
-import { beforeEach, describe, expect, it } from "vitest";
-import { registerAgents, resolveAgentConfig } from "../src/agent-types.js";
+import { describe, expect, it } from "vitest";
+import { AgentTypeRegistry } from "../src/agent-types.js";
 import { buildAgentPrompt } from "../src/prompts.js";
 import type { AgentConfig, EnvInfo } from "../src/types.js";
+
+const testRegistry = new AgentTypeRegistry(() => new Map());
 
 const env: EnvInfo = {
   isGitRepo: true,
@@ -15,13 +17,8 @@ const envNoGit: EnvInfo = {
   platform: "linux",
 };
 
-// Initialize default agents
-beforeEach(() => {
-  registerAgents(new Map());
-});
-
 function getDefaultConfig(name: string): AgentConfig {
-  return resolveAgentConfig(name);
+  return testRegistry.resolveAgentConfig(name);
 }
 
 describe("buildAgentPrompt", () => {
