@@ -1,26 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { AgentActivityTracker } from "../../src/ui/agent-activity-tracker.js";
 import { subscribeUIObserver } from "../../src/ui/ui-observer.js";
-
-/** Minimal mock session with subscribable event bus. */
-function mockSession() {
-	const subscribers = new Set<(event: any) => void>();
-	return {
-		subscribe: (fn: (event: any) => void) => {
-			subscribers.add(fn);
-			return () => {
-				subscribers.delete(fn);
-			};
-		},
-		emit(event: any) {
-			for (const fn of subscribers) fn(event);
-		},
-	};
-}
+import { createMockSession } from "../helpers/mock-session.js";
 
 describe("subscribeUIObserver", () => {
 	it("adds to activeTools on tool_execution_start and calls onUpdate", () => {
-		const session = mockSession();
+		const session = createMockSession();
 		const tracker = new AgentActivityTracker();
 		const onUpdate = () => {};
 		subscribeUIObserver(session, tracker, onUpdate);
@@ -31,7 +16,7 @@ describe("subscribeUIObserver", () => {
 	});
 
 	it("removes from activeTools on tool_execution_end and increments toolUses", () => {
-		const session = mockSession();
+		const session = createMockSession();
 		const tracker = new AgentActivityTracker();
 		subscribeUIObserver(session, tracker);
 
@@ -43,7 +28,7 @@ describe("subscribeUIObserver", () => {
 	});
 
 	it("resets responseText on message_start", () => {
-		const session = mockSession();
+		const session = createMockSession();
 		const tracker = new AgentActivityTracker();
 		subscribeUIObserver(session, tracker);
 
@@ -53,7 +38,7 @@ describe("subscribeUIObserver", () => {
 	});
 
 	it("appends to responseText on message_update text_delta and calls onUpdate", () => {
-		const session = mockSession();
+		const session = createMockSession();
 		const tracker = new AgentActivityTracker();
 		let updateCount = 0;
 		subscribeUIObserver(session, tracker, () => updateCount++);
@@ -74,7 +59,7 @@ describe("subscribeUIObserver", () => {
 	});
 
 	it("ignores message_update with non-text_delta events", () => {
-		const session = mockSession();
+		const session = createMockSession();
 		const tracker = new AgentActivityTracker();
 		let updateCount = 0;
 		subscribeUIObserver(session, tracker, () => updateCount++);
@@ -88,7 +73,7 @@ describe("subscribeUIObserver", () => {
 	});
 
 	it("increments turnCount on turn_end and calls onUpdate", () => {
-		const session = mockSession();
+		const session = createMockSession();
 		const tracker = new AgentActivityTracker();
 		let updateCount = 0;
 		subscribeUIObserver(session, tracker, () => updateCount++);
@@ -100,7 +85,7 @@ describe("subscribeUIObserver", () => {
 	});
 
 	it("accumulates lifetimeUsage on message_end with assistant usage", () => {
-		const session = mockSession();
+		const session = createMockSession();
 		const tracker = new AgentActivityTracker();
 		let updateCount = 0;
 		subscribeUIObserver(session, tracker, () => updateCount++);
@@ -120,7 +105,7 @@ describe("subscribeUIObserver", () => {
 	});
 
 	it("ignores message_end without usage", () => {
-		const session = mockSession();
+		const session = createMockSession();
 		const tracker = new AgentActivityTracker();
 		let updateCount = 0;
 		subscribeUIObserver(session, tracker, () => updateCount++);
@@ -131,7 +116,7 @@ describe("subscribeUIObserver", () => {
 	});
 
 	it("returned function unsubscribes from session", () => {
-		const session = mockSession();
+		const session = createMockSession();
 		const tracker = new AgentActivityTracker();
 		const unsubscribe = subscribeUIObserver(session, tracker);
 
@@ -147,7 +132,7 @@ describe("subscribeUIObserver", () => {
 	});
 
 	it("works without onUpdate callback", () => {
-		const session = mockSession();
+		const session = createMockSession();
 		const tracker = new AgentActivityTracker();
 		subscribeUIObserver(session, tracker);
 
@@ -160,7 +145,7 @@ describe("subscribeUIObserver", () => {
 	});
 
 	it("calls onUpdate on tool_execution_start", () => {
-		const session = mockSession();
+		const session = createMockSession();
 		const tracker = new AgentActivityTracker();
 		let updateCount = 0;
 		subscribeUIObserver(session, tracker, () => updateCount++);
@@ -170,7 +155,7 @@ describe("subscribeUIObserver", () => {
 	});
 
 	it("calls onUpdate on tool_execution_end", () => {
-		const session = mockSession();
+		const session = createMockSession();
 		const tracker = new AgentActivityTracker();
 		let updateCount = 0;
 		subscribeUIObserver(session, tracker, () => updateCount++);
