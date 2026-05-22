@@ -505,9 +505,8 @@ E2 (Type housekeeping) ── can start after A1, runs parallel to later steps
 Phase 7 eliminated all structural smells (mutable state, closure bags, callback threading, wide dependency bags).
 Phase 8 targets the next layer: testability friction, display module cohesion, and menu decomposition.
 
-The test suite (690 tests, 1.4:1 test-to-code ratio) is comprehensive but uneven in quality.
-`agent-runner.test.ts` accounts for 7 of 8 remaining `vi.mock()` calls and relies heavily on verifying internal call sequences rather than observable outputs.
-This fragility is a symptom of production code that imports IO-touching collaborators directly instead of receiving them through injection. (Step G resolved `session-config.test.ts`, which previously held 4 of the 12 total mocks.)
+The test suite (714 tests) is comprehensive but uneven in quality.
+Steps G and H have eliminated 11 of the original 12 `vi.mock()` calls in the runner tests, removing fragile call-sequence assertions in favour of injected stubs. (Step G resolved `session-config.test.ts`; Step H resolved both `agent-runner.test.ts` and `agent-runner-extension-tools.test.ts`.)
 
 The display and menu improvements were identified during Phase 7 but deferred because they don't gate encapsulation work.
 They are included here because the display extraction unblocks menu decomposition.
@@ -516,8 +515,8 @@ They are included here because the display extraction unblocks menu decompositio
 
 | Symptom                       | Location                                                | Root cause                                                        |
 | ----------------------------- | ------------------------------------------------------- | ----------------------------------------------------------------- |
-| 7 `vi.mock()` calls           | `agent-runner.test.ts`                                  | Runner imports prompts, memory, skills, env, session-dir directly |
-| 7 `vi.mock()` calls           | `agent-runner.test.ts`                                  | Runner imports prompts, memory, skills, env, session-dir directly |
+| ~~7 `vi.mock()` calls~~       | ~~`agent-runner.test.ts`~~                              | ~~Resolved by Step H (#133)~~                                     |
+| ~~7 `vi.mock()` calls~~       | ~~`agent-runner-extension-tools.test.ts`~~              | ~~Resolved by Step H (#133)~~                                     |
 | 52 `as any` casts             | Across test suite                                       | SDK session/context interfaces too wide to construct in tests     |
 | 3× duplicated `mockSession()` | agent-manager, record-observer, ui-observer tests       | No shared test fixture                                            |
 | 3× duplicated `makeDeps()`    | agent-tool, background-spawner, foreground-runner tests | No shared tool-deps fixture                                       |
@@ -538,30 +537,17 @@ Impact: reduces test boilerplate; single source of truth for mock shapes; change
 ### Step G: Inject IO collaborators into session-config (#132) ✓ done
 
 `assembleSessionConfig` now accepts `io: AssemblerIO` as a required parameter.
-`agent-runner.ts` constructs the real `AssemblerIO` from direct imports and passes it through.
+`index.ts` constructs the real `AssemblerIO` from direct imports via the `RunnerIO.assemblerIO` field (wired in Step H).
 `session-config.test.ts` injects stubs — all 4 `vi.mock()` calls eliminated, assertions shifted to `SessionConfig` output properties.
 
-### Step H: Inject SDK boundary into agent-runner (#133)
+### Step H: Inject SDK boundary into agent-runner (#133) ✓ done
 
-`agent-runner.ts` has 7 module mocks because it imports `createAgentSession`, `DefaultResourceLoader`, `SessionManager`, and `SettingsManager` from the Pi SDK, plus `detectEnv`, `deriveSubagentSessionDir`, and `assembleSessionConfig` from sibling modules.
+`runAgent()` now accepts `io: RunnerIO` as a required parameter bundling all IO collaborators: `detectEnv`, `getAgentDir`, `createResourceLoader`, `deriveSessionDir`, `createSessionManager`, `createSettingsManager`, `createSession`, and `assemblerIO`.
 
-After Step G, `assembleSessionConfig` no longer needs mocking (its own IO is injected).
-The remaining SDK dependencies can be injected via a narrow `RunnerIO` interface:
+`createAgentRunner(io: RunnerIO): AgentRunner` factory captures the boundary at construction time so `AgentManager` and the `AgentRunner` interface remain unchanged.
+`index.ts` constructs the real `RunnerIO` from Pi SDK imports and sibling modules.
 
-```typescript
-export interface RunnerIO {
-  createSession: (opts: SessionOptions) => AgentSession;
-  createResourceLoader: (opts: ResourceLoaderOptions) => ResourceLoader;
-  createSessionManager: (cwd: string) => SessionManager;
-  detectEnv: (exec: ShellExec, cwd: string) => Promise<EnvInfo>;
-  deriveSessionDir: (parentFile: string) => string;
-}
-```
-
-The production call site in `agent-manager.ts` passes a `RunnerIO` built from the real SDK imports.
-Tests pass a stub `RunnerIO` without `vi.mock()`.
-
-Impact: eliminates 5–7 `vi.mock()` calls in `agent-runner.test.ts`; tests verify behavior (turn limits, tool filtering, response collection) through injected fakes; refactoring internal structure no longer breaks tests.
+Impact: all 7 `vi.mock()` calls eliminated from both `agent-runner.test.ts` and `agent-runner-extension-tools.test.ts`; tests verify behavior (turn limits, tool filtering, response collection) through injected stubs; SDK imports moved to the extension entry point.
 
 ### Step I: Reduce `as any` casts in tests (#134)
 
