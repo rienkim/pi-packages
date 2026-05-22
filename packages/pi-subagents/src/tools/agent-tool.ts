@@ -21,6 +21,7 @@ import {
   type UICtx,
 } from "../ui/agent-widget.js";
 import { subscribeUIObserver } from "../ui/ui-observer.js";
+import { spawnBackground } from "./background-spawner.js";
 import { buildDetails, buildTypeListText, formatLifetimeTokens, getStatusNote, textResult } from "./helpers.js";
 
 // ---- Deps interface ----
@@ -363,59 +364,23 @@ Guidelines:
 
       // Background execution
       if (runInBackground) {
-        const bgState = new AgentActivityTracker(effectiveMaxTurns);
-
-        let id: string;
-
-        try {
-          id = deps.manager.spawn(ctx, subagentType, params.prompt as string, {
-            parentSessionFile: ctx.sessionManager.getSessionFile(),
-            parentSessionId: ctx.sessionManager.getSessionId(),
+        return spawnBackground(
+          { manager: deps.manager, widget: deps.widget, agentActivity: deps.agentActivity },
+          {
+            ctx,
+            subagentType,
+            prompt: params.prompt as string,
             description: params.description as string,
+            displayName,
+            toolCallId,
+            detailBase,
             model,
-            maxTurns: effectiveMaxTurns,
+            effectiveMaxTurns,
             isolated,
             inheritContext,
-            thinkingLevel: thinking,
-            isBackground: true,
+            thinking,
             isolation,
-            invocation: agentInvocation,
-            toolCallId,
-            onSessionCreated: (session: any) => {
-              bgState.setSession(session);
-              subscribeUIObserver(session, bgState);
-            },
-          });
-        } catch (err) {
-          return textResult(err instanceof Error ? err.message : String(err));
-        }
-
-        const record = deps.manager.getRecord(id);
-
-        deps.agentActivity.set(id, bgState);
-        deps.widget.ensureTimer();
-        deps.widget.update();
-
-        const isQueued = record?.status === "queued";
-        return textResult(
-          `Agent ${isQueued ? "queued" : "started"} in background.\n` +
-            `Agent ID: ${id}\n` +
-            `Type: ${displayName}\n` +
-            `Description: ${params.description}\n` +
-            (record?.execution?.outputFile ? `Output file: ${record.execution.outputFile}\n` : "") +
-            (isQueued
-              ? `Position: queued (max ${deps.manager.getMaxConcurrent()} concurrent)\n`
-              : "") +
-            `\nYou will be notified when this agent completes.\n` +
-            `Use get_subagent_result to retrieve full results, or steer_subagent to send it messages.\n` +
-            `Do not duplicate this agent's work.`,
-          {
-            ...detailBase,
-            toolUses: 0,
-            tokens: "",
-            durationMs: 0,
-            status: "background" as const,
-            agentId: id,
+            agentInvocation,
           },
         );
       }

@@ -169,7 +169,6 @@ export default function (pi: ExtensionAPI) {
       resume: (id, prompt, signal) => manager.resume(id, prompt, signal),
       getRecord: (id) => manager.getRecord(id),
       getMaxConcurrent: () => settings.maxConcurrent,
-      listAgents: () => manager.listAgents(),
     },
     widget: {
       setUICtx: (ctx) => runtime.setUICtx(ctx as UICtx),
