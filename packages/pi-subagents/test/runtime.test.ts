@@ -1,5 +1,16 @@
 import { describe, expect, it, vi } from "vitest";
-import { createSubagentRuntime, SubagentRuntime } from "../src/runtime.js";
+import { createSubagentRuntime, SubagentRuntime, type WidgetLike } from "../src/runtime.js";
+import { AgentActivityTracker } from "../src/ui/agent-activity-tracker.js";
+
+function createWidgetStub(): WidgetLike {
+  return {
+    setUICtx: vi.fn(),
+    onTurnStart: vi.fn(),
+    markFinished: vi.fn(),
+    update: vi.fn(),
+    ensureTimer: vi.fn(),
+  };
+}
 
 describe("createSubagentRuntime", () => {
   it("returns correct defaults", () => {
@@ -18,14 +29,8 @@ describe("createSubagentRuntime", () => {
 
   it("agentActivity map is independently mutable", () => {
     const runtime = createSubagentRuntime();
-    const activity = {
-      activeTools: new Map(),
-      toolUses: 0,
-      responseText: "",
-      turnCount: 0,
-      lifetimeUsage: { input: 0, output: 0, cacheWrite: 0 },
-    };
-    runtime.agentActivity.set("agent-1", activity as any);
+    const activity = new AgentActivityTracker();
+    runtime.agentActivity.set("agent-1", activity);
     expect(runtime.agentActivity.size).toBe(1);
     expect(runtime.agentActivity.get("agent-1")).toBe(activity);
   });
@@ -34,17 +39,16 @@ describe("createSubagentRuntime", () => {
     const a = createSubagentRuntime();
     const b = createSubagentRuntime();
 
-    a.agentActivity.set("x", {} as any);
+    a.agentActivity.set("x", new AgentActivityTracker());
 
     expect(b.agentActivity.size).toBe(0);
   });
 
-  it("widget field accepts an AgentWidget instance (structural check)", () => {
+  it("widget field accepts a WidgetLike stub", () => {
     const runtime = createSubagentRuntime();
-    // Use a duck-typed stub to avoid importing the concrete class.
-    const fakeWidget = { update: () => {}, markFinished: () => {}, setUICtx: () => {} };
-    runtime.widget = fakeWidget as any;
-    expect(runtime.widget).toBe(fakeWidget);
+    const stub = createWidgetStub();
+    runtime.widget = stub;
+    expect(runtime.widget).toBe(stub);
   });
 });
 
@@ -88,29 +92,19 @@ describe("SubagentRuntime session-context methods", () => {
 });
 
 describe("SubagentRuntime widget delegation methods", () => {
-  function createWidgetStub() {
-    return {
-      setUICtx: vi.fn(),
-      onTurnStart: vi.fn(),
-      markFinished: vi.fn(),
-      update: vi.fn(),
-      ensureTimer: vi.fn(),
-    };
-  }
-
   it("setUICtx delegates to widget.setUICtx", () => {
     const runtime = createSubagentRuntime();
     const stub = createWidgetStub();
-    runtime.widget = stub as any;
+    runtime.widget = stub;
     const ctx = { setStatus: vi.fn(), setWidget: vi.fn() };
-    runtime.setUICtx(ctx as any);
+    runtime.setUICtx(ctx);
     expect(stub.setUICtx).toHaveBeenCalledWith(ctx);
   });
 
   it("onTurnStart delegates to widget.onTurnStart", () => {
     const runtime = createSubagentRuntime();
     const stub = createWidgetStub();
-    runtime.widget = stub as any;
+    runtime.widget = stub;
     runtime.onTurnStart();
     expect(stub.onTurnStart).toHaveBeenCalledOnce();
   });
@@ -118,7 +112,7 @@ describe("SubagentRuntime widget delegation methods", () => {
   it("markFinished delegates to widget.markFinished", () => {
     const runtime = createSubagentRuntime();
     const stub = createWidgetStub();
-    runtime.widget = stub as any;
+    runtime.widget = stub;
     runtime.markFinished("agent-42");
     expect(stub.markFinished).toHaveBeenCalledWith("agent-42");
   });
@@ -126,7 +120,7 @@ describe("SubagentRuntime widget delegation methods", () => {
   it("updateWidget delegates to widget.update", () => {
     const runtime = createSubagentRuntime();
     const stub = createWidgetStub();
-    runtime.widget = stub as any;
+    runtime.widget = stub;
     runtime.updateWidget();
     expect(stub.update).toHaveBeenCalledOnce();
   });
@@ -134,7 +128,7 @@ describe("SubagentRuntime widget delegation methods", () => {
   it("ensureTimer delegates to widget.ensureTimer", () => {
     const runtime = createSubagentRuntime();
     const stub = createWidgetStub();
-    runtime.widget = stub as any;
+    runtime.widget = stub;
     runtime.ensureTimer();
     expect(stub.ensureTimer).toHaveBeenCalledOnce();
   });
@@ -143,7 +137,7 @@ describe("SubagentRuntime widget delegation methods", () => {
     const runtime = createSubagentRuntime();
     expect(runtime.widget).toBeNull();
     // None of these should throw
-    runtime.setUICtx({} as any);
+    runtime.setUICtx({ setStatus: vi.fn(), setWidget: vi.fn() });
     runtime.onTurnStart();
     runtime.markFinished("id");
     runtime.updateWidget();

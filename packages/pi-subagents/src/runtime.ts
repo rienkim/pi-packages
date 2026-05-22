@@ -7,7 +7,19 @@
  */
 
 import type { AgentActivityTracker } from "./ui/agent-activity-tracker.js";
-import type { AgentWidget, UICtx } from "./ui/agent-widget.js";
+import type { UICtx } from "./ui/agent-widget.js";
+
+/**
+ * Narrow widget interface consumed by SubagentRuntime delegation methods.
+ * AgentWidget satisfies this structurally; tests use plain stubs.
+ */
+export interface WidgetLike {
+  setUICtx(ctx: UICtx): void;
+  onTurnStart(): void;
+  markFinished(id: string): void;
+  update(): void;
+  ensureTimer(): void;
+}
 
 /**
  * Narrow config subset read by AgentManager when constructing RunOptions.
@@ -37,7 +49,7 @@ export class SubagentRuntime {
    * Persistent widget reference. Null until constructed after AgentManager.
    * Delegation methods use optional chaining so callers never need `widget!`.
    */
-  widget: AgentWidget | null = null;
+  widget: WidgetLike | null = null;
 
   // ── Session-context methods ──────────────────────────────────────────────
 
