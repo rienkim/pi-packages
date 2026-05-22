@@ -105,7 +105,7 @@ function createSession(finalText: string) {
   return { session, listeners };
 }
 
-import type { ParentSnapshot } from "../src/types.js";
+import type { ParentSnapshot } from "../src/parent-snapshot.js";
 
 const snapshot: ParentSnapshot = {
   cwd: "/tmp",

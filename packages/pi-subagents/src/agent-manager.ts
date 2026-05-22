@@ -14,10 +14,11 @@ import type { AgentRunner } from "./agent-runner.js";
 import { AgentTypeRegistry } from "./agent-types.js";
 import { debugLog } from "./debug.js";
 import { NotificationState } from "./notification-state.js";
+import type { ParentSnapshot } from "./parent-snapshot.js";
 import { buildParentSnapshot } from "./parent-snapshot.js";
 import { subscribeRecordObserver } from "./record-observer.js";
 import type { RunConfig } from "./runtime.js";
-import type { AgentInvocation, IsolationMode, ParentSnapshot, ShellExec, SubagentType, ThinkingLevel } from "./types.js";
+import type { AgentInvocation, IsolationMode, ShellExec, SubagentType, ThinkingLevel } from "./types.js";
 import type { WorktreeManager } from "./worktree.js";
 import { WorktreeState } from "./worktree-state.js";
 

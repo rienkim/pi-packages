@@ -15,9 +15,10 @@ import {
 import type { AgentConfigLookup } from "./agent-types.js";
 import { extractText } from "./context.js";
 import { detectEnv } from "./env.js";
+import type { ParentSnapshot } from "./parent-snapshot.js";
 import { assembleSessionConfig } from "./session-config.js";
 import { deriveSubagentSessionDir } from "./session-dir.js";
-import type { ParentSnapshot, ShellExec, SubagentType, ThinkingLevel } from "./types.js";
+import type { ShellExec, SubagentType, ThinkingLevel } from "./types.js";
 
 /** Names of tools registered by this extension that subagents must NOT inherit. */
 const EXCLUDED_TOOL_NAMES = ["Agent", "get_subagent_result", "steer_subagent"];

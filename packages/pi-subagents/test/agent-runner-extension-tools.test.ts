@@ -140,7 +140,7 @@ function createSessionWithExtensionToolRegistration(
   return session;
 }
 
-import type { ParentSnapshot } from "../src/types.js";
+import type { ParentSnapshot } from "../src/parent-snapshot.js";
 
 const snapshot: ParentSnapshot = {
   cwd: "/tmp",
