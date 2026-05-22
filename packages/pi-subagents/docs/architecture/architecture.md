@@ -526,7 +526,7 @@ They are included here because the display extraction unblocks menu decompositio
 Contrast with the well-designed test suites: `agent-manager.test.ts` (1 mock, DI via `AgentRunner` interface), `notification.test.ts` (0 mocks, pure functions + DI), and `agent-tool.test.ts` (0 mocks, tests via deps bag).
 The pattern is clear: modules that accept collaborators through injection produce resilient tests; modules that import collaborators directly produce fragile mock-heavy tests.
 
-### Step F: Shared test fixtures
+### Step F: Shared test fixtures (#131)
 
 Consolidate duplicated mock factories into `test/helpers/`.
 
@@ -535,7 +535,7 @@ Consolidate duplicated mock factories into `test/helpers/`.
 
 Impact: reduces test boilerplate; single source of truth for mock shapes; changes to dep interfaces propagate automatically.
 
-### Step G: Inject IO collaborators into session-config
+### Step G: Inject IO collaborators into session-config (#132)
 
 `assembleSessionConfig` is described as a pure assembler, but it directly imports three IO-touching functions: `preloadSkills` (reads `.pi/skills` files), `buildMemoryBlock` (reads `MEMORY.md`), and `buildReadOnlyMemoryBlock` (reads `MEMORY.md`).
 It also imports `buildAgentPrompt`, which is pure but mocked anyway because tests verify call arguments instead of output properties.
@@ -556,7 +556,7 @@ Tests pass stubs or let real implementations run against controlled inputs.
 
 Impact: eliminates all 4 `vi.mock()` calls in `session-config.test.ts`; tests verify `SessionConfig` output properties instead of mock call arguments; the assembler becomes truly pure.
 
-### Step H: Inject SDK boundary into agent-runner
+### Step H: Inject SDK boundary into agent-runner (#133)
 
 `agent-runner.ts` has 7 module mocks because it imports `createAgentSession`, `DefaultResourceLoader`, `SessionManager`, and `SettingsManager` from the Pi SDK, plus `detectEnv`, `deriveSubagentSessionDir`, and `assembleSessionConfig` from sibling modules.
 
@@ -578,7 +578,7 @@ Tests pass a stub `RunnerIO` without `vi.mock()`.
 
 Impact: eliminates 5–7 `vi.mock()` calls in `agent-runner.test.ts`; tests verify behavior (turn limits, tool filtering, response collection) through injected fakes; refactoring internal structure no longer breaks tests.
 
-### Step I: Reduce `as any` casts in tests
+### Step I: Reduce `as any` casts in tests (#134)
 
 With Steps G and H, many `as any` casts disappear because tests construct narrow injectable interfaces instead of wide SDK types.
 Remaining casts are addressed by:
@@ -589,7 +589,7 @@ Remaining casts are addressed by:
 
 Target: reduce `as any` count from 52 to under 10.
 
-### Step J: Extract display helpers
+### Step J: Extract display helpers (#135)
 
 `agent-widget.ts` (600 lines) exports 11 helper functions and constants that are used by both the widget and the menu.
 Extract these into `ui/display.ts`:
@@ -600,7 +600,7 @@ Extract these into `ui/display.ts`:
 
 Impact: `agent-widget.ts` drops from 600 → ~420 lines; shared display logic has a single import point; menu and tool modules stop importing from the widget.
 
-### Step K: Decompose agent-menu.ts
+### Step K: Decompose agent-menu.ts (#136)
 
 `agent-menu.ts` (650 lines) has 8 distinct responsibilities: menu FSM, agent listing, config editing, agent ejection, two creation wizards, running-agent viewer, and settings form.
 Filesystem operations (read/write/delete agent `.md` files) are scattered throughout.
