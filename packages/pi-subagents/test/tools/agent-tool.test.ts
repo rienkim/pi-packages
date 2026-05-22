@@ -25,8 +25,6 @@ function makeDeps(overrides: Partial<AgentToolDeps> = {}): AgentToolDeps {
     agentActivity: new Map<string, AgentActivityTracker>(),
     emitEvent: vi.fn(),
     registry: testRegistry,
-    typeListText: "- general-purpose: General purpose agent",
-    availableTypesText: "general-purpose, Explore, Plan",
     agentDir: "/home/user/.pi",
     settings: { defaultMaxTurns: undefined as number | undefined },
     ...overrides,
@@ -66,10 +64,11 @@ describe("createAgentTool", () => {
     expect(tool.label).toBe("Agent");
   });
 
-  it("includes typeListText in description", () => {
-    const deps = makeDeps({ typeListText: "- Explore: fast explorer" });
-    const tool = createAgentTool(deps);
-    expect(tool.description).toContain("- Explore: fast explorer");
+  it("derives type list from registry — includes default agents in description", () => {
+    const tool = createAgentTool(makeDeps());
+    // testRegistry loads default agents: general-purpose, Explore, Plan
+    expect(tool.description).toContain("- general-purpose: General-purpose agent");
+    expect(tool.description).toContain("- Explore: Fast codebase exploration agent");
   });
 
   it("calls registry.reload() on each execute", async () => {

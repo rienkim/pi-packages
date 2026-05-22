@@ -23,7 +23,7 @@ import {
 } from "../ui/agent-widget.js";
 import { subscribeUIObserver } from "../ui/ui-observer.js";
 import type { LifetimeUsage } from "../usage.js";
-import { formatLifetimeTokens, textResult } from "./helpers.js";
+import { buildTypeListText, formatLifetimeTokens, textResult } from "./helpers.js";
 
 // ---- Agent-tool-specific helpers ----
 
@@ -97,8 +97,6 @@ export interface AgentToolDeps {
   agentActivity: Map<string, AgentActivityTracker>;
   emitEvent: (name: string, data: unknown) => void;
   registry: AgentTypeRegistry;
-  typeListText: string;
-  availableTypesText: string;
   agentDir: string;
   /** Narrow settings accessor — only the default max turns is needed here. */
   settings: { readonly defaultMaxTurns: number | undefined };
@@ -108,6 +106,8 @@ export interface AgentToolDeps {
 
 /** Create the Agent tool definition (without Pi SDK wrapper). */
 export function createAgentTool(deps: AgentToolDeps) {
+  const typeListText = buildTypeListText(deps.registry, deps.agentDir);
+  const availableTypesText = deps.registry.getAvailableTypes().join(", ");
   return {
     name: "Agent" as const,
     label: "Agent",
@@ -116,7 +116,7 @@ export function createAgentTool(deps: AgentToolDeps) {
 The Agent tool launches specialized agents that autonomously handle complex tasks. Each agent type has specific capabilities and tools available to it.
 
 Available agent types:
-${deps.typeListText}
+${typeListText}
 
 Guidelines:
 - For parallel work, use run_in_background: true on each agent. Foreground calls run sequentially — only one executes at a time.
@@ -140,7 +140,7 @@ Guidelines:
         description: "A short (3-5 word) description of the task (shown in UI).",
       }),
       subagent_type: Type.String({
-        description: `The type of specialized agent to use. Available types: ${deps.availableTypesText}. Custom agents from .pi/agents/<name>.md (project) or ${deps.agentDir}/agents/<name>.md (global) are also available.`,
+        description: `The type of specialized agent to use. Available types: ${availableTypesText}. Custom agents from .pi/agents/<name>.md (project) or ${deps.agentDir}/agents/<name>.md (global) are also available.`,
       }),
       model: Type.Optional(
         Type.String({

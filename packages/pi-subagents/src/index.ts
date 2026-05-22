@@ -26,7 +26,7 @@ import { createSubagentsService } from "./service-adapter.js";
 import { SettingsManager } from "./settings.js";
 import { createAgentTool } from "./tools/agent-tool.js";
 import { createGetResultTool } from "./tools/get-result-tool.js";
-import { buildTypeListText, getModelLabelFromConfig } from "./tools/helpers.js";
+import { getModelLabelFromConfig } from "./tools/helpers.js";
 import { createSteerTool } from "./tools/steer-tool.js";
 import { type NotificationDetails } from "./types.js";
 import { createAgentsMenuHandler } from "./ui/agent-menu.js";
@@ -154,8 +154,6 @@ export default function (pi: ExtensionAPI) {
   const toolStart = new ToolStartHandler(runtime);
   pi.on("tool_execution_start", (event, ctx) => toolStart.handleToolExecutionStart(event, ctx));
 
-  const typeListText = buildTypeListText(registry, getAgentDir());
-
   // ---- Agent tool ----
 
   pi.registerTool(defineTool(createAgentTool({
@@ -176,8 +174,6 @@ export default function (pi: ExtensionAPI) {
     agentActivity: runtime.agentActivity,
     emitEvent: (name, data) => pi.events.emit(name, data),
     registry,
-    typeListText,
-    availableTypesText: registry.getAvailableTypes().join(", "),
     agentDir: getAgentDir(),
     settings,
   })));
