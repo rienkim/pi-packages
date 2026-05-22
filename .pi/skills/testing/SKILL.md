@@ -18,6 +18,8 @@ Load this skill when writing, debugging, or planning tests.
 - When a `vi.fn()` factory returns an empty array or narrow literal, annotate its return type explicitly — `vi.fn((): string[] => [])`, not `vi.fn(() => [])`.
   Without the annotation TypeScript infers `never[]`, and subsequent `mockReturnValueOnce([...])` calls fail with “not assignable to `never`”.
   Use `import type` to pull domain types (e.g., `AgentConfig`, `PreloadedSkill`) for the annotation.
+- When typing a mock field on an interface, use `Mock<specific-signature>` — e.g., `Mock<() => void>`, `Mock<(arg: string) => Promise<void>>`.
+  Do not use `ReturnType<typeof vi.fn>` — in Vitest v4 it expands to `Mock<Procedure | Constructable>`, a union that TypeScript cannot call.
 - When mocking a class constructor with `vi.mock()`, use `vi.fn()` with no implementation — not `vi.fn(() => ({}))`.
   Arrow-function implementations are not constructable; `new MockClass()` throws `"is not a constructor"`.
 - When mocking `node:*` built-in modules with `vi.mock()`, include a `default` key mirroring the named exports — omitting it causes "No default export defined on the mock" errors.
@@ -61,3 +63,5 @@ Run `pnpm run check` (`tsc --noEmit`) for type-only changes.
 - When a TDD plan converts an interface to a class, grep for `{ ...variable` spread patterns in tests — spreading a class instance produces a plain object that lacks the class's methods and private fields.
   Replace with `createTestX({ ...overrides })` factory calls or direct field mutation.
 - When integrating an unfamiliar library or data structure, write a disposable exploratory script first to inspect the actual runtime shape.
+- When consolidating duplicate test factories into a shared helper, diff the default values across all copies before writing the shared factory.
+  Different defaults cause cascading assertion failures during migration steps.
