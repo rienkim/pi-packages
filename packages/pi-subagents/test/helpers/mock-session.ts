@@ -1,12 +1,13 @@
+import type { Mock } from "vitest";
 import { vi } from "vitest";
 
 /** The core shape returned by `createMockSession`. */
 export interface MockSession {
-	subscribe: ReturnType<typeof vi.fn> & ((fn: (event: unknown) => void) => () => void);
+	subscribe: Mock<(fn: (event: unknown) => void) => () => void>;
 	emit(event: unknown): void;
-	dispose: ReturnType<typeof vi.fn>;
-	steer: ReturnType<typeof vi.fn>;
-	sessionManager: { getSessionFile: ReturnType<typeof vi.fn> };
+	dispose: Mock<() => void>;
+	steer: Mock<(...args: unknown[]) => Promise<unknown>>;
+	sessionManager: { getSessionFile: Mock<() => unknown> };
 }
 
 /**

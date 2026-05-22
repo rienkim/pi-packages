@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { createAgentTool } from "../../src/tools/agent-tool.js";
+import { type AgentToolDeps, createAgentTool } from "../../src/tools/agent-tool.js";
 import { createToolDeps } from "../helpers/make-deps.js";
 import { createTestRecord } from "../helpers/make-record.js";
 
