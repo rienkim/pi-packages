@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { NotificationState } from "../src/notification-state.js";
+import { createMockSession } from "./helpers/mock-session.js";
 
 vi.mock("../src/parent-snapshot.js", () => ({
   buildParentSnapshot: vi.fn((_ctx: any, _inherit?: boolean) => ({
@@ -22,21 +23,7 @@ const testRegistry = new AgentTypeRegistry(() => new Map());
 
 const mockCtx = { cwd: "/tmp" } as any;
 
-const mockSession = () => {
-  const subscribers = new Set<(event: any) => void>();
-  return {
-    subscribe: vi.fn((fn: (event: any) => void) => {
-      subscribers.add(fn);
-      return () => { subscribers.delete(fn); };
-    }),
-    emit(event: any) {
-      for (const fn of subscribers) fn(event);
-    },
-    dispose: vi.fn(),
-    steer: vi.fn().mockResolvedValue(undefined),
-    sessionManager: { getSessionFile: vi.fn() },
-  } as any;
-};
+
 
 /** Test helper: construct an AgentManager with injected stubs. */
 function createManager(overrides?: {
@@ -49,7 +36,7 @@ function createManager(overrides?: {
   const runner: AgentRunner = overrides?.runner ?? {
     run: vi.fn().mockResolvedValue({
       responseText: "done",
-      session: mockSession(),
+      session: createMockSession(),
       aborted: false,
       steered: false,
     }),
@@ -325,7 +312,7 @@ describe("AgentManager — lifetime usage + compaction count are eagerly initial
     // Emitting message_end events through the mock session drives stats.
     const runner: AgentRunner = {
       run: vi.fn().mockImplementation(async (_ctx: any, _type: any, _prompt: any, opts: any) => {
-        const session = mockSession();
+        const session = createMockSession();
         opts.onSessionCreated?.(session);
         session.emit({ type: "message_end", message: { role: "assistant", usage: { input: 100, output: 50, cacheWrite: 10 } } });
         session.emit({ type: "message_end", message: { role: "assistant", usage: { input: 200, output: 80, cacheWrite: 20 } } });
@@ -351,7 +338,7 @@ describe("AgentManager — lifetime usage + compaction count are eagerly initial
 
     const runner: AgentRunner = {
       run: vi.fn().mockImplementation(async (_ctx: any, _type: any, _prompt: any, opts: any) => {
-        const session = mockSession();
+        const session = createMockSession();
         opts.onSessionCreated?.(session);
         // Compaction fires while the agent is still running — the record passed to
         // onCompact should reflect the just-incremented count.
@@ -381,7 +368,7 @@ describe("AgentManager — lifetime usage + compaction count are eagerly initial
 
   it("resume() also accumulates usage and increments compactions on the same record", async () => {
     // First, spawn with a subscribable session that resume can latch onto
-    const session = mockSession();
+    const session = createMockSession();
     const runner: AgentRunner = {
       run: vi.fn().mockImplementation(async (_ctx: any, _type: any, _prompt: any, opts: any) => {
         opts.onSessionCreated?.(session);
@@ -544,7 +531,7 @@ describe("AgentManager — dependency injection via options bag", () => {
   });
 
   it("calls injected runner.resume when resuming an agent", async () => {
-    const session = mockSession();
+    const session = createMockSession();
     const runner: AgentRunner = {
       run: vi.fn().mockResolvedValue({
         responseText: "first",
@@ -664,7 +651,7 @@ describe("AgentManager — queueing and concurrency with injected stubs", () => 
         startOrder.push(`start-${n}`);
         if (n === 1) await gate1;
         if (n === 2) await gate2;
-        return { responseText: `result-${n}`, session: mockSession(), aborted: false, steered: false };
+        return { responseText: `result-${n}`, session: createMockSession(), aborted: false, steered: false };
       }),
       resume: vi.fn(),
     };
@@ -732,7 +719,7 @@ describe("AgentManager — queueing and concurrency with injected stubs", () => 
       run: vi.fn().mockImplementation(async () => {
         callCount++;
         if (callCount === 1) await gate;
-        return { responseText: "ok", session: mockSession(), aborted: false, steered: false };
+        return { responseText: "ok", session: createMockSession(), aborted: false, steered: false };
       }),
       resume: vi.fn(),
     };
@@ -771,7 +758,7 @@ describe("AgentManager — execution state", () => {
   });
 
   it("sets record.execution with session and outputFile after session creation", async () => {
-    const session = mockSession();
+    const session = createMockSession();
     session.sessionManager.getSessionFile.mockReturnValue("/tmp/session.jsonl");
     const runner: AgentRunner = {
       run: vi.fn().mockImplementation(async (_ctx: any, _type: any, _prompt: any, opts: any) => {
@@ -840,7 +827,7 @@ describe("AgentManager — queueSteer", () => {
   });
 
   it("flushes queued steers to the session once onSessionCreated fires", async () => {
-    const session = mockSession();
+    const session = createMockSession();
     const runner: AgentRunner = {
       run: vi.fn().mockImplementation(async (_ctx: any, _type: any, _prompt: any, opts: any) => {
         opts.onSessionCreated?.(session);
@@ -923,7 +910,7 @@ describe("AgentManager — onSessionCreated callback receives record", () => {
   });
 
   it("passes record as second argument to onSessionCreated callback", async () => {
-    const session = mockSession();
+    const session = createMockSession();
     const received: { record: AgentRecord | undefined } = { record: undefined };
     const runner: AgentRunner = {
       run: vi.fn().mockImplementation(async (_ctx: any, _type: any, _prompt: any, opts: any) => {
@@ -948,7 +935,7 @@ describe("AgentManager — onSessionCreated callback receives record", () => {
   });
 
   it("passes record to foreground onSessionCreated callback", async () => {
-    const session = mockSession();
+    const session = createMockSession();
     const received: { record: AgentRecord | undefined } = { record: undefined };
     const runner: AgentRunner = {
       run: vi.fn().mockImplementation(async (_ctx: any, _type: any, _prompt: any, opts: any) => {
