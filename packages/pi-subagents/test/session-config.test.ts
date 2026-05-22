@@ -3,41 +3,20 @@ import type { AgentConfigLookup } from "../src/agent-types.js";
 import type { PreloadedSkill } from "../src/skill-loader.js";
 import type { AgentConfig } from "../src/types.js";
 
-const {
-  mockResolveAgentConfig,
-  mockGetToolNamesForType,
-  mockGetMemoryToolNames,
-  mockGetReadOnlyMemoryToolNames,
-  mockBuildAgentPrompt,
-  mockBuildMemoryBlock,
-  mockBuildReadOnlyMemoryBlock,
-  mockPreloadSkills,
-} = vi.hoisted(() => ({
-  mockResolveAgentConfig: vi.fn((): AgentConfig => ({
-    name: "Explore",
-    description: "Fast codebase exploration agent",
-    builtinToolNames: ["read"],
-    extensions: false,
-    skills: false,
-    systemPrompt: "You are Explore.",
-    promptMode: "replace",
-  })),
-  mockGetToolNamesForType: vi.fn((): string[] => ["read"]),
-  mockGetMemoryToolNames: vi.fn((): string[] => []),
-  mockGetReadOnlyMemoryToolNames: vi.fn((): string[] => []),
-  mockBuildAgentPrompt: vi.fn(() => "assembled system prompt"),
-  mockBuildMemoryBlock: vi.fn(() => "memory block"),
-  mockBuildReadOnlyMemoryBlock: vi.fn(() => "read-only memory block"),
-  mockPreloadSkills: vi.fn((): PreloadedSkill[] => []),
+const mockResolveAgentConfig = vi.fn((): AgentConfig => ({
+  name: "Explore",
+  description: "Fast codebase exploration agent",
+  builtinToolNames: ["read"],
+  extensions: false,
+  skills: false,
+  systemPrompt: "You are Explore.",
+  promptMode: "replace",
 }));
-
-// Only mock the free-function exports still imported by session-config.ts.
-// resolveAgentConfig and getToolNamesForType are now injected via the registry parameter.
-vi.mock("../src/agent-types.js", async (importOriginal) => ({
-  ...await importOriginal<typeof import("../src/agent-types.js")>(),
-  getMemoryToolNames: mockGetMemoryToolNames,
-  getReadOnlyMemoryToolNames: mockGetReadOnlyMemoryToolNames,
-}));
+const mockGetToolNamesForType = vi.fn((): string[] => ["read"]);
+const mockBuildAgentPrompt = vi.fn(() => "assembled system prompt");
+const mockBuildMemoryBlock = vi.fn(() => "memory block");
+const mockBuildReadOnlyMemoryBlock = vi.fn(() => "read-only memory block");
+const mockPreloadSkills = vi.fn((): PreloadedSkill[] => []);
 
 /** Mock registry injected into assembleSessionConfig instead of module-level free functions. */
 const mockAgentLookup: AgentConfigLookup = {
@@ -71,8 +50,6 @@ const mockIO = {
 beforeEach(() => {
   mockResolveAgentConfig.mockClear();
   mockGetToolNamesForType.mockClear();
-  mockGetMemoryToolNames.mockClear();
-  mockGetReadOnlyMemoryToolNames.mockClear();
   mockBuildAgentPrompt.mockClear();
   mockBuildMemoryBlock.mockClear();
   mockBuildReadOnlyMemoryBlock.mockClear();
@@ -413,7 +390,6 @@ describe("assembleSessionConfig — memory block selection", () => {
   it("agent with memory + write tool → read-write block", () => {
     mockResolveAgentConfig.mockReturnValueOnce(agentWithMemory(["read", "write", "bash"]));
     mockGetToolNamesForType.mockReturnValueOnce(["read", "write", "bash"]);
-    mockGetMemoryToolNames.mockReturnValueOnce([]);
 
     const result = assembleSessionConfig("Writer", ctx, {}, mockEnv, mockAgentLookup, mockIO);
 
@@ -425,7 +401,6 @@ describe("assembleSessionConfig — memory block selection", () => {
   it("agent with memory + edit tool (but no write) → read-write block", () => {
     mockResolveAgentConfig.mockReturnValueOnce(agentWithMemory(["read", "edit"]));
     mockGetToolNamesForType.mockReturnValueOnce(["read", "edit"]);
-    mockGetMemoryToolNames.mockReturnValueOnce([]);
 
     assembleSessionConfig("Writer", ctx, {}, mockEnv, mockAgentLookup, mockIO);
 
@@ -436,7 +411,6 @@ describe("assembleSessionConfig — memory block selection", () => {
   it("agent with memory + read-only tools → read-only block", () => {
     mockResolveAgentConfig.mockReturnValueOnce(agentWithMemory(["read", "bash", "grep"]));
     mockGetToolNamesForType.mockReturnValueOnce(["read", "bash", "grep"]);
-    mockGetReadOnlyMemoryToolNames.mockReturnValueOnce([]);
 
     const result = assembleSessionConfig("Writer", ctx, {}, mockEnv, mockAgentLookup, mockIO);
 
@@ -450,7 +424,6 @@ describe("assembleSessionConfig — memory block selection", () => {
       agentWithMemory(["read", "write", "bash"], ["write"]),
     );
     mockGetToolNamesForType.mockReturnValueOnce(["read", "write", "bash"]);
-    mockGetReadOnlyMemoryToolNames.mockReturnValueOnce([]);
 
     assembleSessionConfig("Writer", ctx, {}, mockEnv, mockAgentLookup, mockIO);
 
@@ -463,7 +436,6 @@ describe("assembleSessionConfig — memory block selection", () => {
       agentWithMemory(["read", "edit"], ["edit"]),
     );
     mockGetToolNamesForType.mockReturnValueOnce(["read", "edit"]);
-    mockGetReadOnlyMemoryToolNames.mockReturnValueOnce([]);
 
     assembleSessionConfig("Writer", ctx, {}, mockEnv, mockAgentLookup, mockIO);
 
@@ -474,19 +446,16 @@ describe("assembleSessionConfig — memory block selection", () => {
   it("adds missing memory tool names from getMemoryToolNames to toolNames", () => {
     mockResolveAgentConfig.mockReturnValueOnce(agentWithMemory(["read", "write"]));
     mockGetToolNamesForType.mockReturnValueOnce(["read", "write"]);
-    // getMemoryToolNames returns tools not already present (e.g. edit)
-    mockGetMemoryToolNames.mockReturnValueOnce(["edit"]);
 
     const result = assembleSessionConfig("Writer", ctx, {}, mockEnv, mockAgentLookup, mockIO);
 
+    // Real getMemoryToolNames(["read","write"]) returns ["edit"] — missing from the set.
     expect(result.toolNames).toContain("edit");
-    expect(mockGetMemoryToolNames).toHaveBeenCalledWith(new Set(["read", "write"]));
   });
 
   it("adds read tool name from getReadOnlyMemoryToolNames when not already present", () => {
     mockResolveAgentConfig.mockReturnValueOnce(agentWithMemory(["bash", "grep"]));
     mockGetToolNamesForType.mockReturnValueOnce(["bash", "grep"]);
-    mockGetReadOnlyMemoryToolNames.mockReturnValueOnce(["read"]);
 
     const result = assembleSessionConfig("Writer", ctx, {}, mockEnv, mockAgentLookup, mockIO);
 
