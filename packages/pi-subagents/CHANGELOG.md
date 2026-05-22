@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [6.9.4](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v6.9.3...pi-subagents-v6.9.4) (2026-05-22)
+
+
+### Documentation
+
+* plan consolidate shared test fixtures ([#131](https://github.com/gotgenes/pi-packages/issues/131)) ([2fe1e65](https://github.com/gotgenes/pi-packages/commit/2fe1e65024743384981c057b405f97f9c76f9b05))
+
 ## [6.9.3](https://github.com/gotgenes/pi-packages/compare/pi-subagents-v6.9.2...pi-subagents-v6.9.3) (2026-05-22)
 
 
