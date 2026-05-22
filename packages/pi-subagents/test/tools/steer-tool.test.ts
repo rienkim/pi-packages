@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { createSteerTool } from "../../src/tools/steer-tool.js";
 import type { AgentRecord } from "../../src/types.js";
 import { createTestRecord } from "../helpers/make-record.js";
+import { createMockSession, toAgentSession } from "../helpers/mock-session.js";
 
 function makeDeps(records: Map<string, AgentRecord> = new Map()) {
   return {
@@ -54,7 +55,7 @@ describe("createSteerTool", () => {
 
   it("sends steer and emits event on success", async () => {
     const record = createTestRecord({ status: "running" });
-    const fakeSession = { fake: true } as any;
+    const fakeSession = toAgentSession(createMockSession());
     record.execution = { session: fakeSession, outputFile: undefined };
     const records = new Map([["agent-1", record]]);
     const deps = makeDeps(records);
@@ -70,7 +71,7 @@ describe("createSteerTool", () => {
 
   it("returns error message when steerAgent throws", async () => {
     const record = createTestRecord({ status: "running" });
-    record.execution = { session: { fake: true } as any, outputFile: undefined };
+    record.execution = { session: toAgentSession(createMockSession()), outputFile: undefined };
     const records = new Map([["agent-1", record]]);
     const deps = makeDeps(records);
     deps.steerAgent.mockRejectedValue(new Error("session closed"));

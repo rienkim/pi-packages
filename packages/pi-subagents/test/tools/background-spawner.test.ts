@@ -3,6 +3,7 @@ import { type BackgroundParams, spawnBackground } from "../../src/tools/backgrou
 import { AgentActivityTracker } from "../../src/ui/agent-activity-tracker.js";
 import { createToolDeps } from "../helpers/make-deps.js";
 import { createTestRecord } from "../helpers/make-record.js";
+import { createMockSession, toAgentSession } from "../helpers/mock-session.js";
 
 function makeCtx() {
   return {
@@ -97,7 +98,7 @@ describe("spawnBackground", () => {
 
   it("includes output file path in result when present", () => {
     const record = createTestRecord({ status: "running" });
-    record.execution = { session: {} as any, outputFile: "/sessions/bg.jsonl" };
+    record.execution = { session: toAgentSession(createMockSession()), outputFile: "/sessions/bg.jsonl" };
     const deps = createToolDeps({
       manager: {
         ...createToolDeps().manager,

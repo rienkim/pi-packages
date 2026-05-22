@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { NotificationState } from "../src/notification-state.js";
-import { createMockSession } from "./helpers/mock-session.js";
+import { createMockSession, toAgentSession } from "./helpers/mock-session.js";
 
 vi.mock("../src/parent-snapshot.js", () => ({
   buildParentSnapshot: vi.fn((_ctx: any, _inherit?: boolean) => ({
@@ -236,11 +236,11 @@ describe("AgentManager — Bug 3 clearCompleted", () => {
 
   it("clearCompleted calls dispose on sessions of removed records", async () => {
     const disposeSpy = vi.fn();
-    const sess = { dispose: disposeSpy };
+    const sess = createMockSession({ dispose: disposeSpy });
     const runner: AgentRunner = {
       run: vi.fn().mockResolvedValue({
         responseText: "done",
-        session: sess as any,
+        session: toAgentSession(sess),
         aborted: false,
         steered: false,
       }),

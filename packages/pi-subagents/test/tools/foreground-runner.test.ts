@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type ForegroundParams, runForeground } from "../../src/tools/foreground-runner.js";
 import { createToolDeps } from "../helpers/make-deps.js";
 import { createTestRecord } from "../helpers/make-record.js";
+import { createMockSession, toAgentSession } from "../helpers/mock-session.js";
 
 function makeCtx() {
   return {
@@ -128,7 +129,7 @@ describe("runForeground", () => {
         spawnAndWait: vi.fn().mockImplementation(
           async (_ctx: any, _type: any, _prompt: any, opts: any) => {
             const record = createTestRecord({ result: "done" });
-            record.execution = { session: {} as any, outputFile: undefined };
+            record.execution = { session: toAgentSession(createMockSession()), outputFile: undefined };
             opts.onSessionCreated?.(mockSess, record);
             return record;
           },

@@ -6,6 +6,7 @@ import { type AdapterDeps, createSubagentsService, toSubagentRecord } from "../s
 import type { AgentRecord } from "../src/types.js";
 import { WorktreeState } from "../src/worktree-state.js";
 import { createTestRecord } from "./helpers/make-record.js";
+import { createMockSession, toAgentSession } from "./helpers/mock-session.js";
 
 describe("toSubagentRecord", () => {
   const baseRecord = (() => {
@@ -42,7 +43,7 @@ describe("toSubagentRecord", () => {
 
   it("strips execution from the record", () => {
     const record = createTestRecord();
-    record.execution = { session: { dispose: () => {} } as any, outputFile: undefined };
+    record.execution = { session: toAgentSession(createMockSession()), outputFile: undefined };
     const result = toSubagentRecord(record);
     expect(result).not.toHaveProperty("execution");
   });
@@ -375,7 +376,7 @@ describe("createSubagentsService — steer, abort, waitForAll, hasRunning", () =
     it("delegates to session.steer and returns true when session is ready", async () => {
       const mockSteer = vi.fn(async () => {});
       const record = createTestRecord({ id: "a-1", status: "running" });
-      record.execution = { session: { steer: mockSteer } as any, outputFile: undefined };
+      record.execution = { session: toAgentSession(createMockSession({ steer: mockSteer })), outputFile: undefined };
       const { deps, mockGetRecord } = createDeps();
       mockGetRecord.mockReturnValue(record);
       const svc = createSubagentsService(deps);

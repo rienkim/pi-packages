@@ -10,6 +10,7 @@ vi.mock("../src/agent-runner.js", async () => {
 
 import { runAgent } from "../src/agent-runner.js";
 import subagentsExtension from "../src/index.js";
+import { createMockSession, toAgentSession } from "./helpers/mock-session.js";
 
 function makePi() {
   const tools = new Map<string, any>();
@@ -74,7 +75,7 @@ describe("print mode background notifications", () => {
   it("ignores stale-context errors from delayed completion nudges", async () => {
     vi.mocked(runAgent).mockResolvedValue({
       responseText: "done",
-      session: { dispose: vi.fn() } as any,
+      session: toAgentSession(createMockSession()),
       aborted: false,
       steered: false,
       sessionFile: "/sessions/child.jsonl",

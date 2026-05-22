@@ -4,6 +4,7 @@ import { NotificationState } from "../../src/notification-state.js";
 import { createGetResultTool } from "../../src/tools/get-result-tool.js";
 import type { AgentRecord } from "../../src/types.js";
 import { createTestRecord } from "../helpers/make-record.js";
+import { createMockSession, toAgentSession } from "../helpers/mock-session.js";
 
 const testRegistry = new AgentTypeRegistry(() => new Map());
 
@@ -105,7 +106,7 @@ describe("createGetResultTool", () => {
 
   it("includes conversation when verbose=true", async () => {
     const record = createTestRecord();
-    record.execution = { session: {} as any, outputFile: undefined };
+    record.execution = { session: toAgentSession(createMockSession()), outputFile: undefined };
     const records = new Map([["agent-1", record]]);
     const deps = makeDeps(records);
     deps.getConversation.mockReturnValue("User: hello\nAssistant: hi");
