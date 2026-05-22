@@ -1,8 +1,8 @@
-import { describe, expect, it, } from "vitest";
+import { describe, expect, it } from "vitest";
 import type { NotificationDetails } from "../src/notification.js";
 import { createNotificationRenderer } from "../src/renderer.js";
 
-/** Minimal theme stub — returns text wrapped with the style name for assertion. */
+/** Minimal theme stub — satisfies RendererTheme structurally. */
 function stubTheme() {
   return {
     fg: (style: string, text: string) => `[${style}:${text}]`,
@@ -24,89 +24,93 @@ function makeDetails(overrides: Partial<NotificationDetails> = {}): Notification
   };
 }
 
+/** Render to a flat string for assertion; uses the public render() API. */
+function renderText(result: ReturnType<ReturnType<typeof createNotificationRenderer>>): string {
+  expect(result).toBeDefined();
+  return result!.render(120).join("\n");
+}
+
 describe("createNotificationRenderer", () => {
   it("returns undefined when message has no details", () => {
     const renderer = createNotificationRenderer();
-    const result = renderer({ details: undefined } as any, { expanded: false }, stubTheme() as any);
+    const result = renderer({ details: undefined }, { expanded: false }, stubTheme());
     expect(result).toBeUndefined();
   });
 
   it("renders completed status with success icon", () => {
     const renderer = createNotificationRenderer();
-    const result = renderer(
-      { details: makeDetails() } as any,
-      { expanded: false },
-      stubTheme() as any,
-    );
-    expect(result).toBeDefined();
-    expect((result as any).text).toContain("[success:✓]");
-    expect((result as any).text).toContain("**Test agent**");
-    expect((result as any).text).toContain("completed");
+    const result = renderer({ details: makeDetails() }, { expanded: false }, stubTheme());
+    const text = renderText(result);
+    expect(text).toContain("[success:✓]");
+    expect(text).toContain("**Test agent**");
+    expect(text).toContain("completed");
   });
 
   it("renders error status with error icon", () => {
     const renderer = createNotificationRenderer();
     const result = renderer(
-      { details: makeDetails({ status: "error" }) } as any,
+      { details: makeDetails({ status: "error" }) },
       { expanded: false },
-      stubTheme() as any,
+      stubTheme(),
     );
-    expect(result).toBeDefined();
-    expect((result as any).text).toContain("[error:✗]");
-    expect((result as any).text).toContain("error");
+    const text = renderText(result);
+    expect(text).toContain("[error:✗]");
+    expect(text).toContain("error");
   });
 
   it("renders steered status as completed (steered)", () => {
     const renderer = createNotificationRenderer();
     const result = renderer(
-      { details: makeDetails({ status: "steered" }) } as any,
+      { details: makeDetails({ status: "steered" }) },
       { expanded: false },
-      stubTheme() as any,
+      stubTheme(),
     );
-    expect((result as any).text).toContain("completed (steered)");
+    expect(renderText(result)).toContain("completed (steered)");
   });
 
   it("shows full result lines when expanded", () => {
     const renderer = createNotificationRenderer();
     const result = renderer(
-      { details: makeDetails({ resultPreview: "line1\nline2\nline3" }) } as any,
+      { details: makeDetails({ resultPreview: "line1\nline2\nline3" }) },
       { expanded: true },
-      stubTheme() as any,
+      stubTheme(),
     );
-    expect((result as any).text).toContain("line1");
-    expect((result as any).text).toContain("line2");
-    expect((result as any).text).toContain("line3");
+    const text = renderText(result);
+    expect(text).toContain("line1");
+    expect(text).toContain("line2");
+    expect(text).toContain("line3");
   });
 
   it("shows collapsed preview when not expanded", () => {
     const renderer = createNotificationRenderer();
     const result = renderer(
-      { details: makeDetails({ resultPreview: "short result" }) } as any,
+      { details: makeDetails({ resultPreview: "short result" }) },
       { expanded: false },
-      stubTheme() as any,
+      stubTheme(),
     );
-    expect((result as any).text).toContain("⎿");
-    expect((result as any).text).toContain("short result");
+    expect(renderText(result)).toContain("⎿");
+    expect(renderText(result)).toContain("short result");
   });
 
   it("shows output file link when present", () => {
     const renderer = createNotificationRenderer();
     const result = renderer(
-      { details: makeDetails({ outputFile: "/tmp/transcript.jsonl" }) } as any,
+      { details: makeDetails({ outputFile: "/tmp/transcript.jsonl" }) },
       { expanded: false },
-      stubTheme() as any,
+      stubTheme(),
     );
-    expect((result as any).text).toContain("/tmp/transcript.jsonl");
+    expect(renderText(result)).toContain("/tmp/transcript.jsonl");
   });
 
   it("includes stats line with tool uses and tokens", () => {
     const renderer = createNotificationRenderer();
     const result = renderer(
-      { details: makeDetails({ toolUses: 7, totalTokens: 5000 }) } as any,
+      { details: makeDetails({ toolUses: 7, totalTokens: 5000 }) },
       { expanded: false },
-      stubTheme() as any,
+      stubTheme(),
     );
-    expect((result as any).text).toContain("7 tool uses");
-    expect((result as any).text).toContain("5.0k token");
+    const text = renderText(result);
+    expect(text).toContain("7 tool uses");
+    expect(text).toContain("5.0k token");
   });
 });
