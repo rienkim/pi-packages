@@ -288,7 +288,7 @@ describe("AgentTypeRegistry", () => {
       // DEFAULT_AGENT_NAMES was moved to AgentTypeRegistry; it must NOT appear
       // as a named export from types.ts anymore.
       const typesModule = await import("../src/types.js");
-      expect((typesModule as Record<string, unknown>)["DEFAULT_AGENT_NAMES"]).toBeUndefined();
+      expect((typesModule as Record<string, unknown>).DEFAULT_AGENT_NAMES).toBeUndefined();
     });
   });
 

@@ -21,7 +21,7 @@ import {
 } from "../ui/agent-widget.js";
 import { spawnBackground } from "./background-spawner.js";
 import { runForeground } from "./foreground-runner.js";
-import { buildDetails, buildTypeListText, formatLifetimeTokens, getStatusNote, textResult } from "./helpers.js";
+import { buildDetails, buildTypeListText, textResult } from "./helpers.js";
 
 // ---- Deps interface ----
 

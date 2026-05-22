@@ -67,6 +67,6 @@ describe("createMockSession", () => {
 
 	it("accepts overrides that add extra fields", () => {
 		const session = createMockSession({ extra: "value" });
-		expect((session as Record<string, unknown>)["extra"]).toBe("value");
+		expect((session as Record<string, unknown>).extra).toBe("value");
 	});
 });
