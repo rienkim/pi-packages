@@ -144,23 +144,43 @@ export interface NotificationSystem {
 
 const NUDGE_HOLD_MS = 200;
 
-export function createNotificationSystem(deps: NotificationDeps): NotificationSystem {
-  const pendingNudges = new Map<string, ReturnType<typeof setTimeout>>();
+export class NotificationManager implements NotificationSystem {
+  private pendingNudges = new Map<string, ReturnType<typeof setTimeout>>();
 
-  function cancelNudge(key: string) {
-    const timer = pendingNudges.get(key);
+  constructor(private deps: NotificationDeps) {}
+
+  cancelNudge(key: string): void {
+    const timer = this.pendingNudges.get(key);
     if (timer != null) {
       clearTimeout(timer);
-      pendingNudges.delete(key);
+      this.pendingNudges.delete(key);
     }
   }
 
-  function scheduleNudge(key: string, send: () => void, delay = NUDGE_HOLD_MS) {
-    cancelNudge(key);
-    pendingNudges.set(
+  sendCompletion(record: AgentRecord): void {
+    this.deps.agentActivity.delete(record.id);
+    this.deps.markFinished(record.id);
+    this.scheduleNudge(record.id, () => this.emitIndividualNudge(record));
+    this.deps.updateWidget();
+  }
+
+  cleanupCompleted(id: string): void {
+    this.deps.agentActivity.delete(id);
+    this.deps.markFinished(id);
+    this.deps.updateWidget();
+  }
+
+  dispose(): void {
+    for (const timer of this.pendingNudges.values()) clearTimeout(timer);
+    this.pendingNudges.clear();
+  }
+
+  private scheduleNudge(key: string, send: () => void, delay = NUDGE_HOLD_MS): void {
+    this.cancelNudge(key);
+    this.pendingNudges.set(
       key,
       setTimeout(() => {
-        pendingNudges.delete(key);
+        this.pendingNudges.delete(key);
         try {
           send();
         } catch (err) {
@@ -170,41 +190,21 @@ export function createNotificationSystem(deps: NotificationDeps): NotificationSy
     );
   }
 
-  function emitIndividualNudge(record: AgentRecord) {
+  private emitIndividualNudge(record: AgentRecord): void {
     if (record.notification?.resultConsumed) return;
 
     const notification = formatTaskNotification(record, 500);
     const outputFile = record.execution?.outputFile;
     const footer = outputFile ? `\nFull transcript available at: ${outputFile}` : "";
 
-    deps.sendMessage(
+    this.deps.sendMessage(
       {
         customType: "subagent-notification",
         content: notification + footer,
         display: true,
-        details: buildNotificationDetails(record, 500, deps.agentActivity.get(record.id)),
+        details: buildNotificationDetails(record, 500, this.deps.agentActivity.get(record.id)),
       },
       { deliverAs: "followUp", triggerTurn: true },
     );
   }
-
-  function sendCompletion(record: AgentRecord) {
-    deps.agentActivity.delete(record.id);
-    deps.markFinished(record.id);
-    scheduleNudge(record.id, () => emitIndividualNudge(record));
-    deps.updateWidget();
-  }
-
-  function cleanupCompleted(id: string) {
-    deps.agentActivity.delete(id);
-    deps.markFinished(id);
-    deps.updateWidget();
-  }
-
-  function dispose() {
-    for (const timer of pendingNudges.values()) clearTimeout(timer);
-    pendingNudges.clear();
-  }
-
-  return { cancelNudge, sendCompletion, cleanupCompleted, dispose };
 }

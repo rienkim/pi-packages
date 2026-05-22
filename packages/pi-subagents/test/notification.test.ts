@@ -2,10 +2,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   buildEventData,
   buildNotificationDetails,
-  createNotificationSystem,
   escapeXml,
   formatTaskNotification,
   getStatusLabel,
+  NotificationManager,
 } from "../src/notification.js";
 import { NotificationState } from "../src/notification-state.js";
 import { AgentActivityTracker } from "../src/ui/agent-activity-tracker.js";
@@ -163,7 +163,7 @@ describe("buildEventData", () => {
 
 // ---- Factory tests ----
 
-describe("createNotificationSystem", () => {
+describe("NotificationManager", () => {
   beforeEach(() => {
     vi.useFakeTimers();
   });
@@ -190,7 +190,7 @@ describe("createNotificationSystem", () => {
 
   it("cancelNudge prevents a scheduled nudge from firing", () => {
     const deps = makeDeps();
-    const system = createNotificationSystem(deps);
+    const system = new NotificationManager(deps);
     system.sendCompletion(baseRecord);
     system.cancelNudge("agent-1");
     vi.advanceTimersByTime(300);
@@ -200,7 +200,7 @@ describe("createNotificationSystem", () => {
   it("sendCompletion cleans up activity and widget, then schedules nudge", () => {
     const deps = makeDeps();
     deps.agentActivity.set("agent-1", new AgentActivityTracker());
-    const system = createNotificationSystem(deps);
+    const system = new NotificationManager(deps);
     system.sendCompletion(baseRecord);
     expect(deps.agentActivity.has("agent-1")).toBe(false);
     expect(deps.markFinished).toHaveBeenCalledWith("agent-1");
@@ -212,7 +212,7 @@ describe("createNotificationSystem", () => {
 
   it("sendCompletion skips nudge when notification.resultConsumed is true", () => {
     const deps = makeDeps();
-    const system = createNotificationSystem(deps);
+    const system = new NotificationManager(deps);
     const record = createTestRecord();
     record.notification = new NotificationState("tc-1");
     record.notification.markConsumed();
@@ -224,7 +224,7 @@ describe("createNotificationSystem", () => {
   it("cleanupCompleted removes activity and marks finished without nudge", () => {
     const deps = makeDeps();
     deps.agentActivity.set("agent-1", new AgentActivityTracker());
-    const system = createNotificationSystem(deps);
+    const system = new NotificationManager(deps);
     system.cleanupCompleted("agent-1");
     expect(deps.agentActivity.has("agent-1")).toBe(false);
     expect(deps.markFinished).toHaveBeenCalledWith("agent-1");
@@ -235,7 +235,7 @@ describe("createNotificationSystem", () => {
 
   it("dispose clears all pending timers", () => {
     const deps = makeDeps();
-    const system = createNotificationSystem(deps);
+    const system = new NotificationManager(deps);
     system.sendCompletion(baseRecord);
     system.dispose();
     vi.advanceTimersByTime(300);

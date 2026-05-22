@@ -18,7 +18,7 @@ import { AgentTypeRegistry } from "./agent-types.js";
 import { loadCustomAgents } from "./custom-agents.js";
 import { SessionLifecycleHandler, ToolStartHandler } from "./handlers/index.js";
 import { type ModelRegistry, resolveModel } from "./model-resolver.js";
-import { buildEventData, createNotificationSystem, type NotificationDetails } from "./notification.js";
+import { buildEventData, type NotificationDetails, NotificationManager } from "./notification.js";
 import { createNotificationRenderer } from "./renderer.js";
 import { createSubagentRuntime } from "./runtime.js";
 import { publishSubagentsService, unpublishSubagentsService } from "./service.js";
@@ -47,7 +47,7 @@ export default function (pi: ExtensionAPI) {
   // ---- Notification system ----
   // runtime.widget is assigned after AgentManager construction; arrow closures
   // capture `runtime` by reference so they always read the current value.
-  const notifications = createNotificationSystem({
+  const notifications = new NotificationManager({
     sendMessage: (msg, opts) => pi.sendMessage(msg, opts),
     agentActivity: runtime.agentActivity,
     markFinished: (id) => runtime.markFinished(id),
