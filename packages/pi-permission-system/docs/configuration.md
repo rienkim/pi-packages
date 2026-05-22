@@ -144,6 +144,8 @@ If a tool is not registered at runtime, this extension blocks it before permissi
 
 For path-bearing tools (`read`, `write`, `edit`, `find`, `grep`, `ls`), an object value maps file-path patterns to actions.
 Patterns are matched against `input.path` using the same last-match-wins wildcard semantics as bash command patterns.
+`*` matches zero or more of any character **including** path separators — `src/*` matches both `src/foo.ts` and `src/deep/nested/foo.ts`.
+There is no single-segment vs. multi-segment distinction; `**` is not a supported token and behaves identically to `*`.
 
 ```jsonc
 {
@@ -156,8 +158,8 @@ Patterns are matched against `input.path` using the same last-match-wins wildcar
     },
     "write": {
       "*": "deny",
-      "src/**": "allow",
-      "tests/**": "allow"
+      "src/*": "allow",
+      "tests/*": "allow"
     },
     "edit": {
       "*": "ask",
@@ -176,7 +178,7 @@ Only specific paths are restricted at call time.
 
 Command patterns use wildcards matched against the full command string:
 
-- `*` matches zero or more of any character.
+- `*` matches zero or more of any character (including `/` and other separators — there is no single-segment vs. multi-segment distinction; `**` is not a supported token and is equivalent to `*`).
 - `?` matches exactly one character.
 
 **Last matching rule wins** — put broad catch-alls first, specific overrides after.
