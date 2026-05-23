@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildSearchArgs } from "../../src/lib/args.js";
+import { buildSearchArgs } from "#src/lib/args";
 
 describe("buildSearchArgs", () => {
   it("always includes --json", () => {

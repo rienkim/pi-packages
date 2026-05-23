@@ -1,4 +1,4 @@
-import type { Exec } from "./exec.js";
+import type { Exec } from "./exec";
 
 export type ReindexStatusCallback = (status: string | undefined) => void;
 

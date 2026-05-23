@@ -1,8 +1,8 @@
 import type { Mock } from "vitest";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { createAvailabilityState } from "../../src/lib/availability.js";
-import type { Exec } from "../../src/lib/exec.js";
-import { executeColGrepSearch } from "../../src/tools/colgrep.js";
+import { createAvailabilityState } from "#src/lib/availability";
+import type { Exec } from "#src/lib/exec";
+import { executeColGrepSearch } from "#src/tools/colgrep";
 
 // ---- mock node builtins ----
 

@@ -1,7 +1,7 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { createAvailabilityState } from "./lib/availability.js";
-import { createReindexer, type Reindexer } from "./lib/reindex.js";
-import { registerColGrep } from "./tools/colgrep.js";
+import { createAvailabilityState } from "./lib/availability";
+import { createReindexer, type Reindexer } from "./lib/reindex";
+import { registerColGrep } from "./tools/colgrep";
 
 const COLGREP_STATUS_KEY = "colgrep";
 

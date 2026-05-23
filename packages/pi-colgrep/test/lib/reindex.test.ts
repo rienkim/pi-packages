@@ -1,7 +1,7 @@
 import type { Mock } from "vitest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { Exec } from "../../src/lib/exec.js";
-import { createReindexer } from "../../src/lib/reindex.js";
+import type { Exec } from "#src/lib/exec";
+import { createReindexer } from "#src/lib/reindex";
 
 // ---- shared factory ----
 
@@ -283,13 +283,13 @@ describe("createReindexer — schedule() in-flight queuing", () => {
     expect(exec).toHaveBeenCalledTimes(1);
     // Finish first
     resolveExec?.();
-    resolveExec = undefined;
+    resolveExec = undefined as (() => void) | undefined;
     await vi.advanceTimersByTimeAsync(0);
     // Now second should run
     expect(exec).toHaveBeenCalledTimes(2);
     // clean up second held exec
     resolveExec?.();
-    resolveExec = undefined;
+    resolveExec = undefined as (() => void) | undefined;
     await vi.advanceTimersByTimeAsync(0);
   });
 
@@ -306,11 +306,11 @@ describe("createReindexer — schedule() in-flight queuing", () => {
     reindexer.schedule();
     // Finish first
     resolveExec?.();
-    resolveExec = undefined;
+    resolveExec = undefined as (() => void) | undefined;
     await vi.advanceTimersByTimeAsync(0);
     expect(exec).toHaveBeenCalledTimes(2);
     resolveExec?.();
-    resolveExec = undefined;
+    resolveExec = undefined as (() => void) | undefined;
     await vi.advanceTimersByTimeAsync(0);
   });
 
@@ -329,12 +329,12 @@ describe("createReindexer — schedule() in-flight queuing", () => {
     reindexer.schedule();
     reindexer.schedule();
     resolveExec?.();
-    resolveExec = undefined;
+    resolveExec = undefined as (() => void) | undefined;
     await vi.advanceTimersByTimeAsync(0);
     // Only one additional run (the queued one)
     expect(exec).toHaveBeenCalledTimes(2);
     resolveExec?.();
-    resolveExec = undefined;
+    resolveExec = undefined as (() => void) | undefined;
     await vi.advanceTimersByTimeAsync(0);
   });
 
@@ -353,10 +353,10 @@ describe("createReindexer — schedule() in-flight queuing", () => {
       "colgrep: indexing\u2026 (queued updates)",
     );
     resolveExec?.();
-    resolveExec = undefined;
+    resolveExec = undefined as (() => void) | undefined;
     await vi.advanceTimersByTimeAsync(0);
     resolveExec?.();
-    resolveExec = undefined;
+    resolveExec = undefined as (() => void) | undefined;
     await vi.advanceTimersByTimeAsync(0);
   });
 });

@@ -1,7 +1,7 @@
 import type { Mock } from "vitest";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { Exec } from "../../src/lib/exec.js";
-import { runSearch } from "../../src/lib/search.js";
+import type { Exec } from "#src/lib/exec";
+import { runSearch } from "#src/lib/search";
 
 const cwd = "/project";
 

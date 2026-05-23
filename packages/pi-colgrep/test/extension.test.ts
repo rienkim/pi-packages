@@ -8,7 +8,7 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import type { Mock } from "vitest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import piColGrepExtension from "../src/extension.js";
+import piColGrepExtension from "#src/extension";
 
 // ---- TestPi stub ----
 

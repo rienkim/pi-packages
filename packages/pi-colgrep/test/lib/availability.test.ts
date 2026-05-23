@@ -3,8 +3,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   checkAvailability,
   createAvailabilityState,
-} from "../../src/lib/availability.js";
-import type { Exec } from "../../src/lib/exec.js";
+} from "#src/lib/availability";
+import type { Exec } from "#src/lib/exec";
 
 describe("checkAvailability", () => {
   let exec: Mock<Exec>;

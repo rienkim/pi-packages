@@ -1,6 +1,6 @@
-import { buildSearchArgs, type SearchParams } from "./args.js";
-import type { Exec } from "./exec.js";
-import { formatResults } from "./format.js";
+import { buildSearchArgs, type SearchParams } from "./args";
+import type { Exec } from "./exec";
+import { formatResults } from "./format";
 
 export interface SearchResult {
   /** Formatted hit lines, present on success. */

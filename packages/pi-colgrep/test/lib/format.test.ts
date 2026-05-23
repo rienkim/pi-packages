@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatHit, formatResults } from "../../src/lib/format.js";
+import { formatHit, formatResults } from "#src/lib/format";
 
 const searchDir = "/project/src";
 
