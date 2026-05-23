@@ -344,4 +344,52 @@ describe("renderWidgetLines", () => {
 		expect(lastLine).toContain("1 running");
 		expect(lastLine).toContain("1 finished");
 	});
+
+	it("returns empty array when no agents to show", () => {
+		const lines = renderWidgetLines({
+			agents: [],
+			activityMap: new Map(),
+			registry: testRegistry,
+			spinnerFrame: 0,
+			terminalWidth: 200,
+			theme,
+			shouldShowFinished: () => true,
+		});
+
+		expect(lines).toEqual([]);
+	});
+
+	it("returns empty when all finished agents are filtered out", () => {
+		const agent = makeAgent({ status: "completed", completedAt: 6000 });
+
+		const lines = renderWidgetLines({
+			agents: [agent],
+			activityMap: new Map(),
+			registry: testRegistry,
+			spinnerFrame: 0,
+			terminalWidth: 200,
+			theme,
+			shouldShowFinished: () => false,
+		});
+
+		expect(lines).toEqual([]);
+	});
+
+	it("uses dim heading when only finished agents are visible", () => {
+		const agent = makeAgent({ status: "completed", completedAt: 6000 });
+
+		const lines = renderWidgetLines({
+			agents: [agent],
+			activityMap: new Map(),
+			registry: testRegistry,
+			spinnerFrame: 0,
+			terminalWidth: 200,
+			theme,
+			shouldShowFinished: () => true,
+		});
+
+		// Dim heading with open circle
+		expect(lines[0]).toContain("[dim:\u25cb]");
+		expect(lines[0]).toContain("[dim:Agents]");
+	});
 });
