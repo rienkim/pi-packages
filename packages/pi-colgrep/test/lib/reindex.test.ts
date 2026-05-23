@@ -232,3 +232,131 @@ describe("createReindexer — schedule()", () => {
     expect(exec).toHaveBeenCalledTimes(1);
   });
 });
+
+// ---- Cycle 4: in-flight queuing ----
+
+describe("createReindexer — schedule() in-flight queuing", () => {
+  let exec: Mock<Exec>;
+  let onStatus: Mock<(status: string | undefined) => void>;
+  // resolve controls: lets us hold an in-flight exec until we choose
+  let resolveExec: (() => void) | undefined;
+
+  beforeEach(() => {
+    exec = makeExec();
+    onStatus = makeOnStatus();
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    resolveExec?.();
+    vi.useRealTimers();
+  });
+
+  function makeHeldExec(): Mock<Exec> {
+    const held = vi.fn<Exec>();
+    held.mockImplementation(
+      () =>
+        new Promise<{ stdout: string; stderr: string; code: number }>(
+          (resolve) => {
+            resolveExec = () => resolve({ stdout: "", stderr: "", code: 0 });
+          },
+        ),
+    );
+    return held;
+  }
+
+  it("does not run a second exec concurrently while one is in-flight", async () => {
+    exec = makeHeldExec();
+    const reindexer = createReindexer({
+      exec,
+      cwd: "/project",
+      onStatus,
+      debounceMs: 10,
+    });
+    // Start first reindex
+    reindexer.schedule();
+    await vi.advanceTimersByTimeAsync(10);
+    // First exec is in flight; schedule another
+    reindexer.schedule();
+    await vi.advanceTimersByTimeAsync(10);
+    // Second exec must NOT have started yet
+    expect(exec).toHaveBeenCalledTimes(1);
+    // Finish first
+    resolveExec?.();
+    resolveExec = undefined;
+    await vi.advanceTimersByTimeAsync(0);
+    // Now second should run
+    expect(exec).toHaveBeenCalledTimes(2);
+    // clean up second held exec
+    resolveExec?.();
+    resolveExec = undefined;
+    await vi.advanceTimersByTimeAsync(0);
+  });
+
+  it("runs the queued reindex after the in-flight one finishes", async () => {
+    exec = makeHeldExec();
+    const reindexer = createReindexer({
+      exec,
+      cwd: "/project",
+      onStatus,
+      debounceMs: 10,
+    });
+    reindexer.schedule();
+    await vi.advanceTimersByTimeAsync(10);
+    reindexer.schedule();
+    // Finish first
+    resolveExec?.();
+    resolveExec = undefined;
+    await vi.advanceTimersByTimeAsync(0);
+    expect(exec).toHaveBeenCalledTimes(2);
+    resolveExec?.();
+    resolveExec = undefined;
+    await vi.advanceTimersByTimeAsync(0);
+  });
+
+  it("collapses multiple schedule() calls while in-flight into a single queued run", async () => {
+    exec = makeHeldExec();
+    const reindexer = createReindexer({
+      exec,
+      cwd: "/project",
+      onStatus,
+      debounceMs: 10,
+    });
+    reindexer.schedule();
+    await vi.advanceTimersByTimeAsync(10);
+    // Three more calls while in-flight
+    reindexer.schedule();
+    reindexer.schedule();
+    reindexer.schedule();
+    resolveExec?.();
+    resolveExec = undefined;
+    await vi.advanceTimersByTimeAsync(0);
+    // Only one additional run (the queued one)
+    expect(exec).toHaveBeenCalledTimes(2);
+    resolveExec?.();
+    resolveExec = undefined;
+    await vi.advanceTimersByTimeAsync(0);
+  });
+
+  it("shows queued-updates status when schedule() is called while in-flight", async () => {
+    exec = makeHeldExec();
+    const reindexer = createReindexer({
+      exec,
+      cwd: "/project",
+      onStatus,
+      debounceMs: 10,
+    });
+    reindexer.schedule();
+    await vi.advanceTimersByTimeAsync(10);
+    reindexer.schedule(); // queue
+    expect(onStatus).toHaveBeenCalledWith(
+      "colgrep: indexing\u2026 (queued updates)",
+    );
+    resolveExec?.();
+    resolveExec = undefined;
+    await vi.advanceTimersByTimeAsync(0);
+    resolveExec?.();
+    resolveExec = undefined;
+    await vi.advanceTimersByTimeAsync(0);
+  });
+});

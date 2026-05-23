@@ -24,6 +24,7 @@ export interface Reindexer {
 const DEFAULT_DEBOUNCE_MS = 4_000;
 const DEFAULT_TIMEOUT_MS = 300_000;
 const INDEXING_STATUS = "colgrep: indexing\u2026";
+const QUEUED_STATUS = "colgrep: indexing\u2026 (queued updates)";
 const INDEXING_FAILED_STATUS = "colgrep: indexing failed";
 
 export function createReindexer(deps: ReindexerDeps): Reindexer {
@@ -32,8 +33,11 @@ export function createReindexer(deps: ReindexerDeps): Reindexer {
   const debounceMs = deps.debounceMs ?? DEFAULT_DEBOUNCE_MS;
 
   let debounceTimer: ReturnType<typeof setTimeout> | undefined;
+  let inFlight = false;
+  let queued = false;
 
   async function runReindex(): Promise<void> {
+    inFlight = true;
     onStatus(INDEXING_STATUS);
     let failed = false;
     try {
@@ -56,6 +60,13 @@ export function createReindexer(deps: ReindexerDeps): Reindexer {
       onStatus(INDEXING_FAILED_STATUS);
     }
     onStatus(undefined);
+    inFlight = false;
+
+    // Drain: if a reindex was queued while we were running, start it now.
+    if (queued) {
+      queued = false;
+      void runReindex();
+    }
   }
 
   return {
@@ -63,6 +74,15 @@ export function createReindexer(deps: ReindexerDeps): Reindexer {
       await runReindex();
     },
     schedule(): void {
+      // While a reindex is in flight, mark a queued follow-up instead of
+      // starting another debounce timer.
+      if (inFlight) {
+        if (!queued) {
+          queued = true;
+          onStatus(QUEUED_STATUS);
+        }
+        return;
+      }
       if (debounceTimer !== undefined) {
         clearTimeout(debounceTimer);
       }
