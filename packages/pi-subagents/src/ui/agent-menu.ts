@@ -207,7 +207,7 @@ export function createAgentsMenuHandler(deps: AgentMenuDeps) {
   }
 
   async function viewAgentConversation(ctx: ExtensionContext, record: AgentRecord) {
-    const session = record.execution?.session;
+    const session = record.session;
     if (!session) {
       ctx.ui.notify(
         `Agent is ${record.status === "queued" ? "queued" : "expired"} — no session available.`,

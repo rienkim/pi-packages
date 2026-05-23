@@ -88,7 +88,7 @@ export function createSubagentsService(
       if (!record || record.status !== "running") {
         return false;
       }
-      const session = record.execution?.session;
+      const session = record.session;
       if (!session) {
         // Session not ready yet — queue via manager for delivery once initialized
         return manager.queueSteer(id, message);

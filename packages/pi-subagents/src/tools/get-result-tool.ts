@@ -65,7 +65,7 @@ export function createGetResultTool(deps: GetResultDeps) {
       const displayName = getDisplayName(record.type, deps.registry);
       const duration = formatDuration(record.startedAt, record.completedAt);
       const tokens = formatLifetimeTokens(record);
-      const contextPercent = getSessionContextPercent(record.execution?.session);
+      const contextPercent = getSessionContextPercent(record.session);
       const statsParts = [`Tool uses: ${record.toolUses}`];
       if (tokens) statsParts.push(tokens);
       if (contextPercent !== null) statsParts.push(`Context: ${Math.round(contextPercent)}%`);
@@ -92,8 +92,8 @@ export function createGetResultTool(deps: GetResultDeps) {
       }
 
       // Verbose: include full conversation
-      if (params.verbose && record.execution?.session) {
-        const conversation = deps.getConversation(record.execution.session);
+      if (params.verbose && record.session) {
+        const conversation = deps.getConversation(record.session);
         if (conversation) {
           output += `\n\n--- Agent Conversation ---\n${conversation}`;
         }

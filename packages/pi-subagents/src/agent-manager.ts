@@ -350,7 +350,7 @@ export class AgentManager {
     signal?: AbortSignal,
   ): Promise<AgentRecord | undefined> {
     const record = this.agents.get(id);
-    const session = record?.execution?.session;
+    const session = record?.session;
     if (!session) return undefined;
 
     record.resetForResume(Date.now());
@@ -402,7 +402,7 @@ export class AgentManager {
 
   /** Dispose a record's session and remove it from the map. */
   private removeRecord(id: string, record: AgentRecord): void {
-    record.execution?.session?.dispose?.();
+    record.session?.dispose?.();
     this.agents.delete(id);
     this.pendingSteers.delete(id);
   }
@@ -480,7 +480,7 @@ export class AgentManager {
     // Clear queue
     this.queue = [];
     for (const record of this.agents.values()) {
-      record.execution?.session?.dispose();
+      record.session?.dispose();
     }
     this.agents.clear();
     // Prune any orphaned git worktrees (crash recovery)

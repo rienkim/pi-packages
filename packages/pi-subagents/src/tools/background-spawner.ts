@@ -79,7 +79,7 @@ export function spawnBackground(
       `Agent ID: ${id}\n` +
       `Type: ${config.displayName}\n` +
       `Description: ${config.description}\n` +
-      (record?.execution?.outputFile ? `Output file: ${record.execution.outputFile}\n` : "") +
+      (record?.outputFile ? `Output file: ${record.outputFile}\n` : "") +
       (isQueued
         ? `Position: queued (max ${manager.getMaxConcurrent()} concurrent)\n`
         : "") +

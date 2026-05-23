@@ -46,7 +46,7 @@ export function formatTaskNotification(record: AgentRecord, resultMaxLen: number
   const status = getStatusLabel(record.status, record.error);
   const durationMs = record.completedAt ? record.completedAt - record.startedAt : 0;
   const totalTokens = getLifetimeTotal(record.lifetimeUsage);
-  const contextPercent = getSessionContextPercent(record.execution?.session);
+  const contextPercent = getSessionContextPercent(record.session);
   const ctxXml = contextPercent !== null ? `<context_percent>${Math.round(contextPercent)}</context_percent>` : "";
   const compactXml = record.compactionCount ? `<compactions>${record.compactionCount}</compactions>` : "";
 
@@ -57,7 +57,7 @@ export function formatTaskNotification(record: AgentRecord, resultMaxLen: number
     : "No output.";
 
   const toolCallId = record.notification?.toolCallId;
-  const outputFile = record.execution?.outputFile;
+  const outputFile = record.outputFile;
   return [
     "<task-notification>",
     `<task-id>${record.id}</task-id>`,
@@ -90,7 +90,7 @@ export function buildNotificationDetails(
     maxTurns: activity?.maxTurns,
     totalTokens,
     durationMs: record.completedAt ? record.completedAt - record.startedAt : 0,
-    outputFile: record.execution?.outputFile,
+    outputFile: record.outputFile,
     error: record.error,
     resultPreview: record.result
       ? record.result.length > resultMaxLen
@@ -194,7 +194,7 @@ export class NotificationManager implements NotificationSystem {
     if (record.notification?.resultConsumed) return;
 
     const notification = formatTaskNotification(record, 500);
-    const outputFile = record.execution?.outputFile;
+    const outputFile = record.outputFile;
     const footer = outputFile ? `\nFull transcript available at: ${outputFile}` : "";
 
     this.deps.sendMessage(
