@@ -52,83 +52,33 @@ When working in this package:
 
 ## Architecture
 
-### Module Dependency Graph
+See `docs/architecture/architecture.md` for the full architecture document with Mermaid diagrams, domain model, structural analysis, and improvement roadmap.
+Refactoring history is preserved in `docs/architecture/history/` (one file per completed phase).
+
+### Domain organization
+
+The extension is organized into six domains (53 files, 7,288 LOC):
+
+| Domain      | Directory                                                                                                                                            | Modules | Responsibility                                                                             |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ------- | ------------------------------------------------------------------------------------------ |
+| Config      | `agent-types.ts`, `default-agents.ts`, `custom-agents.ts`, `invocation-config.ts`                                                                    | 4       | Agent type registry, built-in/custom configs, per-call merge                               |
+| Session     | `session-config.ts`, `prompts.ts`, `context.ts`, `memory.ts`, `skill-loader.ts`, `env.ts`, `model-resolver.ts`, `session-dir.ts`                     | 8       | Pure session assembly: prompts, context, memory, skills, environment, model resolution     |
+| Lifecycle   | `agent-manager.ts`, `agent-runner.ts`, `agent-record.ts`, `parent-snapshot.ts`, `execution-state.ts`, `worktree.ts`, `worktree-state.ts`, `usage.ts` | 8       | Spawn, queue, abort, resume, turn loop, status state machine, worktree isolation           |
+| Observation | `record-observer.ts`, `notification.ts`, `notification-state.ts`, `renderer.ts`                                                                      | 4       | Session-event stats, completion nudges, notification rendering                             |
+| Tools       | `tools/`                                                                                                                                             | 7       | LLM-facing tools: Agent, get_subagent_result, steer_subagent, spawn-config, helpers        |
+| UI          | `ui/`                                                                                                                                                | 10      | Widget, conversation viewer, /agents menu, creation wizard, config editor, display helpers |
+| Service     | `service.ts`, `service-adapter.ts`                                                                                                                   | 2       | Cross-extension API boundary via Symbol.for()                                              |
+
+Entry point (`index.ts`), runtime (`runtime.ts`), shared types (`types.ts`), settings (`settings.ts`), debug (`debug.ts`), and event handlers (`handlers/`) sit at the root.
+
+### Module dependency flow
 
 ```text
-index.ts ──wires──> agent-manager.ts ──calls──> agent-runner.ts
-    │                    │                       ├── session-config.ts
-    │                    ├── worktree.ts          │   ├── prompts.ts
-    │                    └── usage.ts             │   ├── memory.ts
-    ├── service.ts (public API)                   │   ├── skill-loader.ts
-    ├── service-adapter.ts ──wraps──> agent-manager  │   └── agent-types.ts
-    │                                               ├── context.ts
-    │                                               └── env.ts
-    ├── tools (Agent,
-    │   get_subagent_result,
-    │   steer_subagent)
-    ├── ui/
-    │   ├── agent-widget.ts
-    │   └── conversation-viewer.ts
-    ├── agent-types.ts ──uses──> default-agents.ts, custom-agents.ts
-    ├── settings.ts
-    ├── model-resolver.ts
-    ├── invocation-config.ts
-    ├── agent-record.ts (AgentRecord class)
-    ├── types.ts ──re-exports──> agent-record.ts
-    └── session-dir.ts
+tools/ → AgentManager → agent-runner → session-config → [prompts, memory, skills, env]
+                                                          ↑
+                                               AgentTypeRegistry → [default-agents, custom-agents]
+
+record-observer ─subscribes─→ AgentSession ←─subscribes─ ui-observer
+widget ─polls─→ AgentActivityTracker map
+service-adapter ─wraps─→ AgentManager
 ```
-
-### Module Descriptions
-
-#### Public API
-
-| Module               | Responsibility                                                                                                                                                                                                           |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `service.ts`         | Public entry point (`exports` in `package.json`). Defines `SubagentsService` interface, `SubagentRecord`, `SpawnOptions`, accessor functions (`publish/get/unpublishSubagentsService`), and `SUBAGENT_EVENTS` constants. |
-| `service-adapter.ts` | `createSubagentsService()` factory. Wraps `AgentManager` via narrow `AgentManagerLike` interface. Handles string model resolution, record serialization (allowlist), and session gating.                                 |
-
-#### Core engine
-
-| Module              | Responsibility                                                                                                                                                                                  |
-| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `index.ts`          | Extension entry point. Registers tools, the `/agents` command, lifecycle hooks, the agent widget, notification rendering, and settings persistence.                                             |
-| `agent-manager.ts`  | Manages agent lifecycle: spawn, resume, abort. Enforces a configurable concurrency limit (default 4) by queuing excess background agents.                                                       |
-| `agent-runner.ts`   | IO shell: calls `assembleSessionConfig`, creates the SDK session, filters tools, binds extensions (Patch 2), injects `<active_agent>` tag (Patch 3), runs the event loop, and collects results. |
-| `session-config.ts` | Pure configuration assembler. Given `(type, ctx, options, env)`, returns `SessionConfig` — system prompt, tool names, model handle, extras — with no SDK types constructed.                     |
-| `agent-record.ts`   | `AgentRecord` class with encapsulated status-transition methods (`markRunning`, `markCompleted`, etc.). Re-exported from `types.ts`.                                                            |
-| `types.ts`          | Shared type definitions and re-exports: `AgentConfig`, `AgentRecord` (from `agent-record.ts`), `SubagentType`, `MemoryScope`, `IsolationMode`, etc.                                             |
-
-#### Agent configuration
-
-| Module              | Responsibility                                                                                                                                                                                      |
-| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `agent-types.ts`    | `AgentTypeRegistry` class (injectable, replaces module-scoped state). `AgentConfigLookup` interface. Pure free functions: `BUILTIN_TOOL_NAMES`, `getMemoryToolNames`, `getReadOnlyMemoryToolNames`. |
-| `default-agents.ts` | Embedded default agent configurations (`general-purpose`, `Explore`, `Plan`).                                                                                                                       |
-| `custom-agents.ts`  | Loads user-defined agent `.md` files from project and global directories. Parses frontmatter for config overrides.                                                                                  |
-
-#### Prompt assembly
-
-| Module            | Responsibility                                                                                  |
-| ----------------- | ----------------------------------------------------------------------------------------------- |
-| `prompts.ts`      | Builds the system prompt for each agent from its config. Supports `replace` and `append` modes. |
-| `context.ts`      | Extracts parent conversation history for `inherit_context` mode.                                |
-| `memory.ts`       | Manages persistent per-agent `MEMORY.md` files scoped to user, project, or local directories.   |
-| `skill-loader.ts` | Preloads named skills from `.pi/skills`, `.agents/skills`, and global directories.              |
-| `env.ts`          | Detects environment info (git repo, branch, platform) for agent system prompts.                 |
-
-#### Execution support
-
-| Module                 | Responsibility                                                                              |
-| ---------------------- | ------------------------------------------------------------------------------------------- |
-| `worktree.ts`          | Git worktree isolation. Creates temporary worktrees so agents work on isolated repo copies. |
-| `usage.ts`             | Token usage tracking. Defines `LifetimeUsage` shape and provides accumulator operators.     |
-| `model-resolver.ts`    | Resolves model strings to model instances. Tries exact match first, then fuzzy match.       |
-| `invocation-config.ts` | Merges per-call tool parameters with agent config defaults for the final invocation config. |
-| `session-dir.ts`       | Derives subagent session directory from the parent session file path.                       |
-
-#### UI
-
-| Module                      | Responsibility                                                                            |
-| --------------------------- | ----------------------------------------------------------------------------------------- |
-| `ui/agent-widget.ts`        | Persistent widget showing running/completed agents with animated spinners and live stats. |
-| `ui/conversation-viewer.ts` | Live conversation overlay for viewing an agent's full session.                            |
