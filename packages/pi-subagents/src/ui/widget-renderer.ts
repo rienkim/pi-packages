@@ -8,6 +8,7 @@
 import type { AgentConfigLookup } from "../agent-types.js";
 import type { SubagentType } from "../types.js";
 import type { LifetimeUsage, SessionLike } from "../usage.js";
+import { getLifetimeTotal, getSessionContextPercent } from "../usage.js";
 import {
 	describeActivity,
 	ERROR_STATUSES,
@@ -16,6 +17,7 @@ import {
 	formatTurns,
 	getDisplayName,
 	getPromptModeLabel,
+	SPINNER,
 	type Theme,
 } from "./display.js";
 
@@ -85,4 +87,37 @@ export function renderFinishedLine(
 
 	const modeTag = modeLabel ? ` ${theme.fg("dim", `(${modeLabel})`)}` : "";
 	return `${icon} ${theme.fg("dim", name)}${modeTag}  ${theme.fg("dim", agent.description)} ${theme.fg("dim", "·")} ${theme.fg("dim", parts.join(" · "))}${statusText}`;
+}
+
+/** Render a single running agent as header + activity line pair (no tree connector prefix). */
+export function renderRunningLines(
+	agent: WidgetAgent,
+	activity: WidgetActivity | undefined,
+	registry: AgentConfigLookup,
+	spinnerFrame: number,
+	theme: Theme,
+): [header: string, activity: string] {
+	const name = getDisplayName(agent.type, registry);
+	const modeLabel = getPromptModeLabel(agent.type, registry);
+	const modeTag = modeLabel ? ` ${theme.fg("dim", `(${modeLabel})`)}` : "";
+	const elapsed = formatMs(Date.now() - agent.startedAt);
+
+	const tokens = getLifetimeTotal(agent.lifetimeUsage);
+	const contextPercent = activity?.session ? getSessionContextPercent(activity.session) : null;
+	const tokenText = tokens > 0 ? formatSessionTokens(tokens, contextPercent, theme, agent.compactionCount) : "";
+
+	const parts: string[] = [];
+	if (activity) parts.push(formatTurns(activity.turnCount, activity.maxTurns));
+	if (agent.toolUses > 0) parts.push(`${agent.toolUses} tool use${agent.toolUses === 1 ? "" : "s"}`);
+	if (tokenText) parts.push(tokenText);
+	parts.push(elapsed);
+	const statsText = parts.join(" · ");
+
+	const frame = SPINNER[spinnerFrame % SPINNER.length];
+	const activityText = activity ? describeActivity(activity.activeTools, activity.responseText) : "thinking\u2026";
+
+	const header = `${theme.fg("accent", frame)} ${theme.bold(name)}${modeTag}  ${theme.fg("muted", agent.description)} ${theme.fg("dim", "·")} ${theme.fg("dim", statsText)}`;
+	const activityLine = theme.fg("dim", `  \u23BF  ${activityText}`);
+
+	return [header, activityLine];
 }

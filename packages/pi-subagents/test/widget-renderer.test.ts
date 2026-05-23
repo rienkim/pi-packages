@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { AgentTypeRegistry } from "../src/agent-types.js";
 import type { Theme } from "../src/ui/display.js";
 import type { WidgetActivity, WidgetAgent } from "../src/ui/widget-renderer.js";
-import { renderFinishedLine } from "../src/ui/widget-renderer.js";
+import { renderFinishedLine, renderRunningLines } from "../src/ui/widget-renderer.js";
 
 /** Minimal theme stub — wraps text with markup tags for assertion. */
 function stubTheme(): Theme {
@@ -143,5 +143,83 @@ describe("renderFinishedLine", () => {
 
 		expect(line).toContain("[dim:■]");
 		expect(line).toContain("[dim: stopped]");
+	});
+});
+
+describe("renderRunningLines", () => {
+	const theme = stubTheme();
+
+	it("returns header and activity lines", () => {
+		const agent = makeAgent({ status: "running", completedAt: undefined });
+		const activity = makeActivity({
+			activeTools: new Map([["read_1", "read"]]),
+			turnCount: 2,
+			maxTurns: 10,
+		});
+		const [header, activityLine] = renderRunningLines(agent, activity, testRegistry, 0, theme);
+
+		// Header contains spinner frame, bold name, description
+		expect(header).toContain("[accent:⠋]");
+		expect(header).toContain("**Agent**");
+		expect(header).toContain("[muted:test task]");
+		// Stats: turn count
+		expect(header).toContain("⟳2≤10");
+		// Tool uses
+		expect(header).toContain("5 tool uses");
+
+		// Activity line shows what the agent is doing
+		expect(activityLine).toContain("reading");
+	});
+
+	it("shows thinking when no activity tracker", () => {
+		const agent = makeAgent({ status: "running", completedAt: undefined });
+		const [, activityLine] = renderRunningLines(agent, undefined, testRegistry, 0, theme);
+
+		expect(activityLine).toContain("thinking…");
+	});
+
+	it("advances spinner frame", () => {
+		const agent = makeAgent({ status: "running", completedAt: undefined });
+		const [header0] = renderRunningLines(agent, undefined, testRegistry, 0, theme);
+		const [header1] = renderRunningLines(agent, undefined, testRegistry, 1, theme);
+
+		expect(header0).toContain("[accent:⠋]");
+		expect(header1).toContain("[accent:⠙]");
+	});
+
+	it("includes token display when lifetimeUsage has tokens", () => {
+		const agent = makeAgent({
+			status: "running",
+			completedAt: undefined,
+			lifetimeUsage: { input: 5000, output: 2000, cacheWrite: 1000 },
+			compactionCount: 1,
+		});
+		const activity = makeActivity({
+			session: {
+				getSessionStats: () => ({
+					tokens: { input: 5000, output: 2000, cacheWrite: 1000 },
+					contextUsage: { percent: 45 },
+				}),
+			},
+		});
+		const [header] = renderRunningLines(agent, activity, testRegistry, 0, theme);
+
+		// 5000 + 2000 + 1000 = 8000 → "8.0k token"
+		expect(header).toContain("8.0k token");
+		// Context percent
+		expect(header).toContain("45%");
+		// Compaction count
+		expect(header).toContain("↻1");
+	});
+
+	it("omits token display when lifetimeUsage totals zero", () => {
+		const agent = makeAgent({
+			status: "running",
+			completedAt: undefined,
+			lifetimeUsage: { input: 0, output: 0, cacheWrite: 0 },
+		});
+		const [header] = renderRunningLines(agent, undefined, testRegistry, 0, theme);
+
+		expect(header).not.toContain("token");
 	});
 });
