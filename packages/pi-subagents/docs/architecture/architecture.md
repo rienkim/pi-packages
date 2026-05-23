@@ -496,16 +496,15 @@ Extracted `foreground-runner.ts` (~175 lines) and `background-spawner.ts` (~116 
 
 ### Dependency graph
 
-```text
-A1 (Registry) ──────────────────┐
-A2 (Settings) ── A2b (Apply) ──┤
-A3 (Activity Tracker) ───────────┤
-                                   ├── D2 (Narrow deps) ── E1 (agent-tool split)
-B  (Record lifecycle) ───────────┤
-  └── C (Observer) ────────────┤
-        └── D1 (SpawnOptions) ──┘
-
-E2 (Type housekeeping) ── can start after A1, runs parallel to later steps
+```mermaid
+flowchart LR
+    A1["A1: Registry"] --> D2["D2: Narrow deps"]
+    A2["A2: Settings"] --> A2b["A2b: Apply"] --> D2
+    A3["A3: Activity Tracker"] --> D2
+    B["B: Record lifecycle"] --> D2
+    B --> C["C: Observer"] --> D1["D1: SpawnOptions"] --> D2
+    D2 --> E1["E1: agent-tool split"]
+    A1 --> E2["E2: Type housekeeping"]
 ```
 
 ---
@@ -594,18 +593,17 @@ Impact: `agent-menu.ts` dropped from 668 → 296 lines; extracted modules receiv
 
 ### Step dependencies
 
-```text
-F (Shared fixtures) ──────────────────────────────┐
-                                                    │
-G (session-config IO injection) ──────────────────┤
-  └── H (agent-runner SDK injection) ────────────┤
-        └── I (Reduce as-any) ────────────────────┘
-
-J (Display extraction) ──────────────────────────┐
-  └── K (Menu decomposition) ────────────────────┘
+```mermaid
+flowchart LR
+    subgraph testability["Testability track"]
+        F["F: Shared fixtures"] --> G["G: session-config IO"] --> H["H: agent-runner SDK"] --> I["I: Reduce as-any"]
+    end
+    subgraph display["Display track"]
+        J["J: Display extraction"] --> K["K: Menu decomposition"]
+    end
 ```
 
-Steps F through I (testability) and Steps J through K (display/menu) are independent tracks that can proceed in parallel.
+The two tracks are independent and can proceed in parallel.
 
 ---
 
@@ -715,18 +713,18 @@ Depends on Step L: once the tracker drops stats fields, the renderer reads from 
 
 ### Step dependencies
 
-```text
-L (Consolidate observation) ──────────────────────────┐
-  └── P (Split widget rendering) ──────────────────────┘
-
-M (Remove ctx from AgentManager) ─────────────────────┐
-  └── N (Narrow UI context) ───────────────────────────┘
-
-O (Inject text wrapping) ── independent
+```mermaid
+flowchart LR
+    subgraph observation["Observation track"]
+        L["L: Consolidate observation"] --> P["P: Split widget rendering"]
+    end
+    subgraph ctx["ctx elimination track"]
+        M["M: Decompose execute / push ctx"] --> N["N: Narrow UI context"]
+    end
+    O["O: Inject text wrapping"]
 ```
 
-Tracks L→P and M→N are independent of each other.
-Step O is independent of both tracks.
+The three tracks are independent of each other.
 
 ### Projected impact
 
