@@ -33,12 +33,11 @@ export class AgentActivityTracker {
 		this._activeTools.set(toolName + "_" + (++this._toolKeySeq), toolName);
 	}
 
-	/** Record that a tool has finished executing; increments toolUses. No-op when no matching tool is active. */
-	onToolEnd(toolName: string): void {
+	/** Remove a tool from active tools (called when tool execution ends). No-op when no matching tool is active. */
+	onToolDone(toolName: string): void {
 		for (const [key, name] of this._activeTools) {
 			if (name === toolName) {
 				this._activeTools.delete(key);
-				this._toolUses++;
 				break;
 			}
 		}

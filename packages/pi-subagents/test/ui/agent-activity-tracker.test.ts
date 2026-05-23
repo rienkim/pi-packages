@@ -70,29 +70,26 @@ describe("AgentActivityTracker", () => {
 		});
 	});
 
-	describe("onToolEnd", () => {
-		it("removes one entry from activeTools and increments toolUses", () => {
+	describe("onToolDone", () => {
+		it("removes one entry from activeTools without incrementing any counter", () => {
 			const tracker = new AgentActivityTracker();
 			tracker.onToolStart("Read");
-			tracker.onToolEnd("Read");
+			tracker.onToolDone("Read");
 			expect(tracker.activeTools.size).toBe(0);
-			expect(tracker.toolUses).toBe(1);
 		});
 
 		it("removes only one entry when multiple same-name tools are active", () => {
 			const tracker = new AgentActivityTracker();
 			tracker.onToolStart("Read");
 			tracker.onToolStart("Read");
-			tracker.onToolEnd("Read");
+			tracker.onToolDone("Read");
 			expect(tracker.activeTools.size).toBe(1);
-			expect(tracker.toolUses).toBe(1);
 		});
 
 		it("is a no-op when no matching tool is active", () => {
 			const tracker = new AgentActivityTracker();
-			tracker.onToolEnd("Read");
+			tracker.onToolDone("Read");
 			expect(tracker.activeTools.size).toBe(0);
-			expect(tracker.toolUses).toBe(0);
 		});
 	});
 

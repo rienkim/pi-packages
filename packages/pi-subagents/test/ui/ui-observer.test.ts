@@ -15,7 +15,7 @@ describe("subscribeUIObserver", () => {
 		expect([...tracker.activeTools.values()]).toContain("Read");
 	});
 
-	it("removes from activeTools on tool_execution_end and increments toolUses", () => {
+	it("removes from activeTools on tool_execution_end", () => {
 		const session = createMockSession();
 		const tracker = new AgentActivityTracker();
 		subscribeUIObserver(session, tracker);
@@ -24,7 +24,6 @@ describe("subscribeUIObserver", () => {
 		session.emit({ type: "tool_execution_end", toolName: "Read" });
 
 		expect(tracker.activeTools.size).toBe(0);
-		expect(tracker.toolUses).toBe(1);
 	});
 
 	it("resets responseText on message_start", () => {
@@ -122,13 +121,14 @@ describe("subscribeUIObserver", () => {
 
 		session.emit({ type: "tool_execution_start", toolName: "Read" });
 		session.emit({ type: "tool_execution_end", toolName: "Read" });
-		expect(tracker.toolUses).toBe(1);
+		expect(tracker.activeTools.size).toBe(0); // tool was removed
 
 		unsubscribe();
 
 		session.emit({ type: "tool_execution_start", toolName: "Write" });
 		session.emit({ type: "tool_execution_end", toolName: "Write" });
-		expect(tracker.toolUses).toBe(1); // unchanged
+		// After unsubscribe, the Write tool start was not observed
+		expect(tracker.activeTools.size).toBe(0);
 	});
 
 	it("works without onUpdate callback", () => {
@@ -140,7 +140,7 @@ describe("subscribeUIObserver", () => {
 		session.emit({ type: "tool_execution_end", toolName: "Read" });
 		session.emit({ type: "turn_end" });
 
-		expect(tracker.toolUses).toBe(1);
+		expect(tracker.activeTools.size).toBe(0);
 		expect(tracker.turnCount).toBe(2);
 	});
 

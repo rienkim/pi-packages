@@ -40,7 +40,7 @@ export function subscribeUIObserver(
 		}
 
 		if (event.type === "tool_execution_end") {
-			tracker.onToolEnd(event.toolName);
+			tracker.onToolDone(event.toolName);
 			onUpdate?.();
 		}
 
