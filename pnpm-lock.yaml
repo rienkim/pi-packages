@@ -12,6 +12,9 @@ catalogs:
     '@types/node':
       specifier: ^22.15.3
       version: 22.19.19
+    fallow:
+      specifier: ^2.77.0
+      version: 2.77.0
     rumdl:
       specifier: ^0.1.93
       version: 0.1.93
@@ -29,6 +32,9 @@ importers:
       '@biomejs/biome':
         specifier: ^2.4.14
         version: 2.4.15
+      fallow:
+        specifier: 'catalog:'
+        version: 2.77.0
       rumdl:
         specifier: ^0.1.93
         version: 0.1.93
@@ -369,6 +375,46 @@ packages:
 
   '@emnapi/wasi-threads@1.2.1':
     resolution: {integrity: sha512-uTII7OYF+/Mes/MrcIOYp5yOtSMLBWSIoLPpcgwipoiKbli6k322tcoFsxoIIxPDqW01SQGAgko4EzZi2BNv2w==}
+
+  '@fallow-cli/darwin-arm64@2.77.0':
+    resolution: {integrity: sha512-bkEutZynY8DFEDrrSGQpTMSO723nijYTa4WHVdyjd3Ltb3Al7AgsMyGzk1GmKMN0CDzZAmwa8Ys6TPpCpiqB8w==}
+    cpu: [arm64]
+    os: [darwin]
+
+  '@fallow-cli/darwin-x64@2.77.0':
+    resolution: {integrity: sha512-JIXDYUpFx3aVAW4ZqP3bWktIk1nwyyP8o3Ly01WQiohlhwen3Rerb3AE9fcx6XJq8jMHy+90XmEqDzfGoI+02w==}
+    cpu: [x64]
+    os: [darwin]
+
+  '@fallow-cli/linux-arm64-gnu@2.77.0':
+    resolution: {integrity: sha512-IkyJakGe4OC90AmVSVNzQ3yVI6BWvCO9oLBr1M/5X1bRvcBRqP7n3GkWtLjs66M28DqCNnW/eVaoP7afJaWn2g==}
+    cpu: [arm64]
+    os: [linux]
+
+  '@fallow-cli/linux-arm64-musl@2.77.0':
+    resolution: {integrity: sha512-XIdmqrDxVObxnQQ7ljaB71WEeunW11P6TiLZS+Idn2dk+rd4HF+XWDcriN+q/CrzFP4agTdh0ym7JJ8+4szh/w==}
+    cpu: [arm64]
+    os: [linux]
+
+  '@fallow-cli/linux-x64-gnu@2.77.0':
+    resolution: {integrity: sha512-v6xezo8DF5JEo8nWVbqnk7flINY4Yz53GmkVZS7qF/mTKvALff/5tn2VQ65rJPy8xkvm4Nx7pVeK7z9xd1rskg==}
+    cpu: [x64]
+    os: [linux]
+
+  '@fallow-cli/linux-x64-musl@2.77.0':
+    resolution: {integrity: sha512-snSlL4w9r45naAODzWEAZeie07dzFg2SgCvz3RFKnZCPMzMxmm5p9Dpbvoup3glETIDfkjyzOqFvMlEKggr9Ow==}
+    cpu: [x64]
+    os: [linux]
+
+  '@fallow-cli/win32-arm64-msvc@2.77.0':
+    resolution: {integrity: sha512-5GfNibKxm/GlZvQJmCbe6/QHQZ/FD8WndPFIkWJbmthPHX01YArW0wSAKWTsDMZ8eYFuHdvGwiHHakK3ukhgZg==}
+    cpu: [arm64]
+    os: [win32]
+
+  '@fallow-cli/win32-x64-msvc@2.77.0':
+    resolution: {integrity: sha512-IjzuhBT8KXv3HXo4s+vVKKESuxRW7Me+Hb9Kc8WyySsxuRMGoE1D4vECOZSnYQJ6tMLU4osOVhgVRs2Mk3sTrw==}
+    cpu: [x64]
+    os: [win32]
 
   '@google/genai@1.52.0':
     resolution: {integrity: sha512-gwSvbpiN/17O9TbsqSsE/OzZcpv5Fo4RQjdngGgogtuB9RsyJ8ZHhX5KjHj1bp5N9snN2eK8LDGXSaWW2hof8Q==}
@@ -810,6 +856,11 @@ packages:
 
   extend@3.0.2:
     resolution: {integrity: sha512-fjquC59cD7CyW6urNXK0FBufkZcoiGG80wTuPujX590cB5Ttln20E2UB4S/WARVqhXffZl2LNgS+gQdPIIim/g==}
+
+  fallow@2.77.0:
+    resolution: {integrity: sha512-NFZxvTyseVBsxqwOIQbVisKa1YjyYqV4A/d3LEbJELBko0CndNbh+hFX1fO4ApiZ+YETyRZ3Rk0hAHXo49382g==}
+    engines: {node: '>=16'}
+    hasBin: true
 
   fast-xml-builder@1.2.0:
     resolution: {integrity: sha512-00aAWieqff+ZJhsXA4g1g7M8k+7AYoMUUHF+/zFb5U6Uv/P0Vl4QZo84/IcufzYalLuEj9928bXN9PbbFzMF0Q==}
@@ -1668,6 +1719,30 @@ snapshots:
       tslib: 2.8.1
     optional: true
 
+  '@fallow-cli/darwin-arm64@2.77.0':
+    optional: true
+
+  '@fallow-cli/darwin-x64@2.77.0':
+    optional: true
+
+  '@fallow-cli/linux-arm64-gnu@2.77.0':
+    optional: true
+
+  '@fallow-cli/linux-arm64-musl@2.77.0':
+    optional: true
+
+  '@fallow-cli/linux-x64-gnu@2.77.0':
+    optional: true
+
+  '@fallow-cli/linux-x64-musl@2.77.0':
+    optional: true
+
+  '@fallow-cli/win32-arm64-msvc@2.77.0':
+    optional: true
+
+  '@fallow-cli/win32-x64-msvc@2.77.0':
+    optional: true
+
   '@google/genai@1.52.0':
     dependencies:
       google-auth-library: 10.6.2
@@ -2007,6 +2082,19 @@ snapshots:
   expect-type@1.3.0: {}
 
   extend@3.0.2: {}
+
+  fallow@2.77.0:
+    dependencies:
+      detect-libc: 2.1.2
+    optionalDependencies:
+      '@fallow-cli/darwin-arm64': 2.77.0
+      '@fallow-cli/darwin-x64': 2.77.0
+      '@fallow-cli/linux-arm64-gnu': 2.77.0
+      '@fallow-cli/linux-arm64-musl': 2.77.0
+      '@fallow-cli/linux-x64-gnu': 2.77.0
+      '@fallow-cli/linux-x64-musl': 2.77.0
+      '@fallow-cli/win32-arm64-msvc': 2.77.0
+      '@fallow-cli/win32-x64-msvc': 2.77.0
 
   fast-xml-builder@1.2.0:
     dependencies:

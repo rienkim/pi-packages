@@ -10,6 +10,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
       - uses: pnpm/action-setup@v6
 
@@ -28,6 +30,15 @@ jobs:
 
       - name: Test
         run: pnpm -r run test
+
+      - name: Fallow audit
+        if: github.event_name == 'pull_request'
+        run: pnpm fallow audit
+
+      - name: Fallow check
+        if: github.ref == 'refs/heads/main'
+        continue-on-error: true
+        run: pnpm fallow
 
   release-please:
     needs: [check]

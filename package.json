@@ -12,10 +12,16 @@
     "test": "pnpm -r run test",
     "lint": "biome check . && rumdl check .",
     "lint:fix": "biome check --write . && rumdl fmt .",
-    "format": "biome format --write ."
+    "format": "biome format --write .",
+    "fallow": "fallow",
+    "fallow:audit": "fallow audit",
+    "fallow:health": "fallow health --score --hotspots --targets",
+    "fallow:dead-code": "fallow dead-code",
+    "fallow:dupes": "fallow dupes"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.14",
+    "fallow": "catalog:",
     "rumdl": "^0.1.93"
   }
 }
