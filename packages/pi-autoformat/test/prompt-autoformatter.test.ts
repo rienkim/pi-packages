@@ -3,10 +3,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import type { BuiltinFormatter } from "../src/builtin-formatters";
-import type { CommandRunner } from "../src/formatter-executor";
-import type { FormatterConfig } from "../src/formatter-registry";
-import { PromptAutoformatter } from "../src/prompt-autoformatter";
+import type { BuiltinFormatter } from "#src/builtin-formatters";
+import type { CommandRunner } from "#src/formatter-executor";
+import type { FormatterConfig } from "#src/formatter-registry";
+import { PromptAutoformatter } from "#src/prompt-autoformatter";
 
 describe("PromptAutoformatter", () => {
   const config: FormatterConfig = {

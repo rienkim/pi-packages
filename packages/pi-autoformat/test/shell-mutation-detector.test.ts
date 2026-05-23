@@ -4,7 +4,7 @@ import {
   matchWrapper,
   parseKnownCommand,
   SnapshotTracker,
-} from "../src/shell-mutation-detector";
+} from "#src/shell-mutation-detector";
 
 describe("parseKnownCommand", () => {
   describe("sed -i", () => {

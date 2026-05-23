@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import type { FormatterOutputReportingConfig } from "../src/formatter-config";
-import type { BatchRun } from "../src/formatter-executor";
-import { formatRunOutputBlock } from "../src/formatter-output-report";
+import type { FormatterOutputReportingConfig } from "#src/formatter-config";
+import type { BatchRun } from "#src/formatter-executor";
+import { formatRunOutputBlock } from "#src/formatter-output-report";
 
 const ENABLED_STDERR: FormatterOutputReportingConfig = {
   onFailure: "stderr",

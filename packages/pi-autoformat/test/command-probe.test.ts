@@ -7,7 +7,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   createCachedCommandProbe,
   defaultCommandProbe,
-} from "../src/command-probe";
+} from "#src/command-probe";
 
 const previousPath = process.env.PATH;
 

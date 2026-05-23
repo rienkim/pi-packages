@@ -5,14 +5,14 @@ import type {
 } from "@earendil-works/pi-coding-agent";
 import { describe, expect, it, vi } from "vitest";
 
-import type { LoadConfigResult } from "../src/config-loader";
+import type { LoadConfigResult } from "#src/config-loader";
 import {
   buildSteeringMessageContent,
   createAutoformatExtension,
   createDefaultAutoformatter,
-} from "../src/extension";
-import { createFormatterConfig } from "../src/formatter-config";
-import type { PromptAutoformatterResult } from "../src/prompt-autoformatter";
+} from "#src/extension";
+import { createFormatterConfig } from "#src/formatter-config";
+import type { PromptAutoformatterResult } from "#src/prompt-autoformatter";
 
 type Handler = (event: never, ctx: TestContext) => void | Promise<void>;
 

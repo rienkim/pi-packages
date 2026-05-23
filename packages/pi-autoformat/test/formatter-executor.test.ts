@@ -1,15 +1,15 @@
 import { describe, expect, it } from "vitest";
 
-import type { BuiltinFormatter } from "../src/builtin-formatters";
+import type { BuiltinFormatter } from "#src/builtin-formatters";
 import {
   type CommandRunner,
   executeChainGroup,
   executeChainGroupWithPartition,
-} from "../src/formatter-executor";
+} from "#src/formatter-executor";
 import type {
   ResolvedChainStep,
   ResolvedFormatter,
-} from "../src/formatter-registry";
+} from "#src/formatter-registry";
 
 const prettier: ResolvedFormatter = {
   name: "prettier",

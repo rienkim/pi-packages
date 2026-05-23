@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { extensionName } from "../src/index";
+import { extensionName } from "#src/index";
 
 describe("smoke", () => {
   it("exports extension name", () => {

@@ -4,7 +4,7 @@ import {
   createFormatterConfig,
   DEFAULT_FORMATTER_CONFIG,
   type UserFormatterConfig,
-} from "../src/formatter-config";
+} from "#src/formatter-config";
 
 describe("createFormatterConfig", () => {
   it("includes default formatter definitions but no default chains", () => {

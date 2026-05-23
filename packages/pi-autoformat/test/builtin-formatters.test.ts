@@ -8,11 +8,11 @@ import {
   BUILTIN_FORMATTERS,
   type DiscoveryCache,
   isBuiltinFormatterName,
-} from "../src/builtin-formatters";
+} from "#src/builtin-formatters";
 import {
   type FormatterConfig,
   resolveChainSteps,
-} from "../src/formatter-registry";
+} from "#src/formatter-registry";
 
 describe("builtin formatter registry", () => {
   it("registers treefmt and treefmt-nix as built-ins", () => {

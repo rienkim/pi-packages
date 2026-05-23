@@ -9,7 +9,7 @@ import {
   getProjectConfigPath,
   loadAutoformatConfig,
   validateUserFormatterConfig,
-} from "../src/config-loader";
+} from "#src/config-loader";
 
 describe("validateUserFormatterConfig", () => {
   it("accepts $schema and known config fields", () => {

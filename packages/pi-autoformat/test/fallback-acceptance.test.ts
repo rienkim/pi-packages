@@ -14,10 +14,10 @@
 
 import { describe, expect, it } from "vitest";
 
-import { validateUserFormatterConfig } from "../src/config-loader";
-import { createFormatterConfig } from "../src/formatter-config";
-import type { CommandRunner } from "../src/formatter-executor";
-import { PromptAutoformatter } from "../src/prompt-autoformatter";
+import { validateUserFormatterConfig } from "#src/config-loader";
+import { createFormatterConfig } from "#src/formatter-config";
+import type { CommandRunner } from "#src/formatter-executor";
+import { PromptAutoformatter } from "#src/prompt-autoformatter";
 
 describe("fallback chain end-to-end", () => {
   it("falls through from biome to prettier when biome is missing on PATH", async () => {

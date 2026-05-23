@@ -6,7 +6,7 @@ import {
   createCustomToolHandlers,
   extractPathsFromInput,
   parseTouchedPayload,
-} from "../src/custom-mutation-tools";
+} from "#src/custom-mutation-tools";
 
 describe("extractPathsFromInput", () => {
   it("returns the value at a top-level string field", () => {

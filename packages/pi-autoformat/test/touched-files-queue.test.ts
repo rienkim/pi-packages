@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import type { FormatScope } from "../src/format-scope";
+import type { FormatScope } from "#src/format-scope";
 import {
   type MutationSourceHandler,
   TouchedFilesQueue,
   writeOrEditHandler,
-} from "../src/touched-files-queue";
+} from "#src/touched-files-queue";
 
 describe("TouchedFilesQueue", () => {
   it("collects paths from write and edit tool results", () => {
