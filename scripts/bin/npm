@@ -7,8 +7,8 @@
 # Exceptions passed through to the real npm:
 #   - `npm root` — the extension calls `npm root -g` at startup to discover
 #     the global node_modules directory where Pi installs skills/extensions.
-#   - any invocation with a `*/.pi/npm` argument — Pi itself runs
-#     `npm install/uninstall --prefix <project>/.pi/npm` to manage extensions.
+#   - any invocation with a `*/.pi/npm` or `*/.pi/agent/npm` argument — Pi
+#     runs `npm install/uninstall --prefix <path>` to manage extensions.
 #   - `npm install -g` / `npm uninstall -g` — Pi manages global packages
 #     this way. Global operations don't affect the project lockfile.
 #
@@ -52,11 +52,12 @@ warn_and_pass_through() {
 }
 
 # ── Pass-through: Pi internal package management (.pi/npm) ─────────────────
-# Pi itself runs `npm install/uninstall --prefix <project>/.pi/npm` to manage
-# extensions. Any subcommand with a .pi/npm path is passed through.
+# Pi itself runs `npm install/uninstall --prefix <path>/.pi/npm` (project) or
+# `--prefix <path>/.pi/agent/npm` (user) to manage extensions.
+# Any subcommand with either path pattern is passed through.
 for arg in $ORIG_ARGS; do
   case "$arg" in
-    */.pi/npm|*/.pi/npm/) pass_through ;;
+    */.pi/npm|*/.pi/npm/|*/.pi/agent/npm|*/.pi/agent/npm/) pass_through ;;
   esac
 done
 
