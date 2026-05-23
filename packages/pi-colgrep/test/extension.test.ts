@@ -301,3 +301,39 @@ describe("extension — /colgrep-reindex command", () => {
     ).resolves.toBeUndefined();
   });
 });
+
+// ---- Cycle 9: session_shutdown cleanup ----
+
+describe("extension — session_shutdown cleanup", () => {
+  let pi: TestPi;
+  let ctx: TestCtx;
+
+  beforeEach(() => {
+    pi = new TestPi();
+    ctx = makeCtx();
+    pi.exec.mockResolvedValue({ stdout: "", stderr: "", code: 0 });
+    piColGrepExtension(pi.asExtensionAPI());
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("cancels a pending debounce timer on session_shutdown", async () => {
+    // Warm up the session so the reindexer exists
+    await pi.trigger("session_start", makeSessionStartEvent(), ctx);
+    pi.exec.mockClear();
+    pi.exec.mockResolvedValue({ stdout: "", stderr: "", code: 0 });
+
+    // Schedule a reindex (starts a 4 s debounce timer)
+    await pi.trigger("tool_result", { toolName: "write", isError: false }, ctx);
+
+    // Shut down before the debounce fires
+    await pi.trigger("session_shutdown", {}, ctx);
+
+    // Timer passes — no reindex should fire
+    await vi.advanceTimersByTimeAsync(4_000);
+    expect(pi.exec).not.toHaveBeenCalled();
+  });
+});

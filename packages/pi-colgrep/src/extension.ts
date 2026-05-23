@@ -55,6 +55,11 @@ export default function piColGrepExtension(pi: ExtensionAPI): void {
     reindexer?.schedule();
   });
 
+  pi.on("session_shutdown", async (_event, _ctx) => {
+    await reindexer?.shutdown();
+    reindexer = undefined;
+  });
+
   pi.registerCommand("colgrep-reindex", {
     description: "Manually refresh the ColGrep semantic search index",
     handler: async (_args, ctx) => {
