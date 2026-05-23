@@ -160,10 +160,10 @@ export function registerColGrep(
 // ---- rendering helpers ----
 
 function formatCall(args: Record<string, unknown>, theme: Theme): string {
-  const query = typeof args["query"] === "string" ? args["query"] : undefined;
-  const regex = typeof args["regex"] === "string" ? args["regex"] : undefined;
-  const path = typeof args["path"] === "string" ? args["path"] : ".";
-  const limit = typeof args["limit"] === "number" ? args["limit"] : 15;
+  const query = typeof args.query === "string" ? args.query : undefined;
+  const regex = typeof args.regex === "string" ? args.regex : undefined;
+  const path = typeof args.path === "string" ? args.path : ".";
+  const limit = typeof args.limit === "number" ? args.limit : 15;
 
   const parts: string[] = [theme.fg("toolTitle", theme.bold("colgrep"))];
   if (query) parts.push(theme.fg("accent", `"${query}"`));
@@ -172,16 +172,21 @@ function formatCall(args: Record<string, unknown>, theme: Theme): string {
   return parts.join(" ");
 }
 
-// biome-ignore lint/suspicious/noExplicitAny: AgentToolResult<TDetails> inference is lost at call site
+interface AnyToolResult {
+  content: Array<{ type: string; text?: string }>;
+  details?: ColGrepToolDetails;
+}
+
 function formatResult(
-  result: any,
+  result: unknown,
   options: { expanded: boolean },
   theme: Theme,
 ): string {
-  const details = result.details;
+  const r = result as AnyToolResult;
+  const details = r.details;
   const hitCount = details?.hitCount ?? 0;
   const outputText =
-    result.content[0]?.type === "text" ? (result.content[0].text ?? "") : "";
+    r.content[0]?.type === "text" ? (r.content[0].text ?? "") : "";
 
   if (!options.expanded) {
     const icon = theme.fg("success", "✓");

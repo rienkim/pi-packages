@@ -59,13 +59,13 @@ export function formatResults(rawOutput: string, searchDir: string): string {
 function isValidHit(item: unknown): item is ColGrepJsonHit {
   if (typeof item !== "object" || item === null) return false;
   const obj = item as Record<string, unknown>;
-  if (typeof obj["score"] !== "number") return false;
-  const unit = obj["unit"];
+  if (typeof obj.score !== "number") return false;
+  const unit = obj.unit;
   if (typeof unit !== "object" || unit === null) return false;
   const u = unit as Record<string, unknown>;
   return (
-    typeof u["file"] === "string" &&
-    typeof u["line"] === "number" &&
-    typeof u["end_line"] === "number"
+    typeof u.file === "string" &&
+    typeof u.line === "number" &&
+    typeof u.end_line === "number"
   );
 }
