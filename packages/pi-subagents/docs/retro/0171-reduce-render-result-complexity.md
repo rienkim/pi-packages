@@ -41,3 +41,37 @@ A docs commit updated the architecture file to remove `renderResult` from the co
 ## Stage: User Note (2026-05-24T21:30:00Z)
 
 We need to update `/plan-issue` so the plan includes updating any architecture documents.
+
+## Stage: Final Retrospective (2026-05-24T22:00:00Z)
+
+### Session summary
+
+Issue #171 shipped cleanly across three sessions: planning produced a 9-step TDD plan, implementation added 43 tests and extracted `renderResult` into `tools/result-renderer.ts` (cognitive complexity 43 → dispatcher), and shipping released `pi-subagents-v6.18.8` with no deviations.
+The only friction was an incomplete architecture doc update that required a second manual pass.
+
+### Observations
+
+#### What went well
+
+- The plan-to-implementation pipeline worked smoothly for a mechanical extraction refactor — zero deviations from the plan across all 9 TDD steps.
+- The `Theme` type from `display.ts` and the `widget-renderer.ts` pattern provided a proven template, making the extraction straightforward.
+- ESLint pre-commit hooks caught a stale `eslint-disable` rule (`no-unsafe-return`) automatically during the refactor commit.
+
+#### What caused friction (agent side)
+
+- `missing-context` — The TDD session's initial architecture update (commit `1183522`) only updated the complexity hotspot table and layout listing, missing health metrics, the Mermaid domain diagram, the Phase 10 structural refactoring table, and the SKILL.md domain table.
+  The user had to explicitly request the fuller update, which landed as a second commit (`1510dc7`).
+  Impact: extra user round-trip and a second commit for what should have been one complete update.
+- `missing-context` — The `git add ../../.pi/skills/...` path triggered a `pi-permission-system` permission denial because the relative path escaped the package directory.
+  Switched to repo-root-relative path to resolve.
+  Impact: minor — one failed commit attempt, immediately retried.
+
+#### What caused friction (user side)
+
+- The `/plan-issue` prompt did not instruct the planner to check architecture docs for sections affected by the change.
+  Because the plan's Module-Level Changes omitted `docs/architecture/architecture.md`, the TDD session treated architecture updates as an afterthought rather than a planned deliverable.
+  Impact: the user had to intervene with an explicit request and a retro note.
+
+### Changes made
+
+1. `.pi/prompts/plan-issue.md` — Added architecture-doc check to the Module-Level Changes bullet: "When the change adds, removes, or moves a module, check `packages/<PKG>/docs/architecture/` for layout listings, complexity tables, health metrics, or domain diagrams that reference the affected files and list them as doc updates."
