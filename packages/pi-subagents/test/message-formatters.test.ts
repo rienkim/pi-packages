@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Theme } from "#src/ui/display";
 import type { FormatterContext } from "#src/ui/message-formatters";
-import { formatAssistantMessage, formatUserMessage } from "#src/ui/message-formatters";
+import { formatAssistantMessage, formatToolResult, formatUserMessage } from "#src/ui/message-formatters";
 
 // ── Theme helpers ────────────────────────────────────────────────────────────
 
@@ -140,6 +140,67 @@ describe("message-formatters", () => {
       const content = [{ type: "image" }];
       const result = formatAssistantMessage(content, 80, ctx);
       expect(result).toEqual(["[bold:[Assistant]]"]);
+    });
+  });
+
+  describe("formatToolResult", () => {
+    const ctx: FormatterContext = { theme: labelTheme, wrapText: noWrap };
+
+    it("returns null for empty content array", () => {
+      expect(formatToolResult([], 80, ctx)).toBeNull();
+    });
+
+    it("returns null when all content items have no text", () => {
+      const content = [{ type: "text", text: "" }];
+      expect(formatToolResult(content, 80, ctx)).toBeNull();
+    });
+
+    it("returns null for whitespace-only content", () => {
+      const content = [{ type: "text", text: "   " }];
+      expect(formatToolResult(content, 80, ctx)).toBeNull();
+    });
+
+    it("formats normal content with Result header", () => {
+      const content = [{ type: "text", text: "output" }];
+      const result = formatToolResult(content, 80, ctx);
+      expect(result).toEqual(["[dim:[Result]]", "[dim:output]"]);
+    });
+
+    it("applies dim styling to each body line", () => {
+      const splitWrap = (text: string, _width: number): string[] => text.split("\n");
+      const content = [{ type: "text", text: "line1\nline2" }];
+      const result = formatToolResult(content, 80, { theme: labelTheme, wrapText: splitWrap });
+      expect(result).toEqual(["[dim:[Result]]", "[dim:line1]", "[dim:line2]"]);
+    });
+
+    it("truncates content exceeding 500 chars", () => {
+      const longText = "A".repeat(600);
+      const content = [{ type: "text", text: longText }];
+      const result = formatToolResult(content, 80, ctx);
+      expect(result).not.toBeNull();
+      // Body line should contain the truncated text in dim styling
+      const bodyLine = result![1];
+      expect(bodyLine).toContain("A".repeat(500));
+      expect(bodyLine).toContain("... (truncated)");
+    });
+
+    it("does not truncate content at exactly 500 chars", () => {
+      const exactText = "B".repeat(500);
+      const content = [{ type: "text", text: exactText }];
+      const result = formatToolResult(content, 80, ctx);
+      expect(result).not.toBeNull();
+      expect(result![1]).toBe(`[dim:${ "B".repeat(500)}]`);
+    });
+
+    it("trims content before wrapping", () => {
+      const capturedTexts: string[] = [];
+      const capturingWrap = (text: string, _width: number): string[] => {
+        capturedTexts.push(text);
+        return [text];
+      };
+      const content = [{ type: "text", text: "  trimmed  " }];
+      formatToolResult(content, 80, { theme: plainTheme, wrapText: capturingWrap });
+      expect(capturedTexts).toEqual(["trimmed"]);
     });
   });
 });

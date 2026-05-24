@@ -53,6 +53,27 @@ export function formatUserMessage(
   ];
 }
 
+// ── formatToolResult ────────────────────────────────────────────────────────────
+
+/**
+ * Format a tool result message into display lines.
+ * Returns null when the result text is empty (caller should skip separator).
+ */
+export function formatToolResult(
+  content: unknown[],
+  width: number,
+  ctx: FormatterContext,
+): string[] | null {
+  const { theme, wrapText } = ctx;
+  const text = extractText(content);
+  const truncated = text.length > 500 ? text.slice(0, 500) + "... (truncated)" : text;
+  if (!truncated.trim()) return null;
+  return [
+    theme.fg("dim", "[Result]"),
+    ...wrapText(truncated.trim(), width).map(l => theme.fg("dim", l)),
+  ];
+}
+
 // ── formatAssistantMessage ───────────────────────────────────────────────────
 
 /**
