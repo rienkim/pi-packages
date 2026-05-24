@@ -244,6 +244,7 @@ src/
 ├── session/                        session assembly and preparation
 │   ├── session-config.ts           pure assembler (main entry)
 │   ├── prompts.ts                  system prompt building
+│   ├── content-items.ts            shared message content parsing (tool-call names, assistant content)
 │   ├── context.ts                  parent conversation extraction
 │   ├── memory.ts                   persistent MEMORY.md per agent
 │   ├── skill-loader.ts             skill preloading
@@ -484,8 +485,9 @@ Files with highest commit frequency × complexity (accelerating trend):
 
 ### Production duplication
 
-One clone group (18 lines) shared between `agent-runner.ts:456-468` and `conversation-viewer.ts:261-278`.
-Both format turn-event content for display — identical iteration over message content items, extracting tool names and text.
+The 18-line clone group between `agent-runner.ts` and `message-formatters.ts` was resolved in #172.
+`ToolCallContent`, `getToolCallName`, and `extractAssistantContent` now live in `session/content-items.ts`.
+No known production duplication remains.
 
 ### Proposed bag decompositions
 
@@ -648,9 +650,11 @@ Extracted per-status result formatting from `renderResult` in `agent-tool.ts` in
 `renderResult` reduced from ~80 lines (cognitive complexity 43) to a 10-line guard + `renderAgentResult` dispatcher.
 The inline `stats()` closure became the exported `renderStats` helper, shared by all status renderers.
 
-### Step 9: Extract shared turn-formatting logic ([#172][172])
+### Step 9: Extract shared turn-formatting logic ([#172][172]) ✓ Done
 
-The 18-line production clone between `agent-runner.ts` and `conversation-viewer.ts` extracts into a shared function in the session domain.
+Extracted `ToolCallContent`, `getToolCallName`, and `extractAssistantContent` into `session/content-items.ts`.
+Both `lifecycle/agent-runner.ts` (`getAgentConversation`) and `ui/message-formatters.ts` (`formatAssistantMessage`) now import from the shared module.
+Eliminates the 18-line production-duplication finding.
 
 ### Step dependencies
 
