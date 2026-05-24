@@ -447,7 +447,7 @@ Bags with 10+ fields are the highest priority for decomposition.
 | `ResolvedSpawnConfig`       | 3 nested                                               | foreground-runner, background-spawner, agent-tool | ✓ done   |
 | `AgentSpawnConfig`          | 13 → 13 (ParentSessionInfo nested)                     | agent-manager (internal)                          | ✓ done   |
 | `RunOptions`                | 12                                                     | agent-runner                                      | High     |
-| `SessionConfig`             | 11                                                     | agent-runner (output of assembler)                | High     |
+| `SessionConfig`             | 8 (ToolFilterConfig nested)                            | agent-runner (output of assembler)                | ✓ done   |
 | `NotificationDetails`       | 10                                                     | notification                                      | Medium   |
 | `ResourceLoaderOptions`     | 10                                                     | agent-runner (SDK bridge)                         | Medium   |
 | `RunnerIO`                  | split → `EnvironmentIO` (3) + `SessionFactoryIO` (5+1) | agent-runner                                      | ✓ done   |
@@ -560,20 +560,11 @@ interface RunContext {
 
 The remaining `RunOptions` fields (`model`, `maxTurns`, `signal`, `isolated`, `thinkingLevel`, `defaultMaxTurns`, `graceTurns`, `onSessionCreated`) are genuine execution parameters.
 
-#### SessionConfig (11 fields → extract ToolFilterConfig)
+#### SessionConfig (11 fields → extract ToolFilterConfig) — done ([#168][168])
 
-Three fields form a cohesive tool-filtering cluster:
-
-```typescript
-/** Tool filtering configuration — used by filterActiveTools. */
-interface ToolFilterConfig {
-  toolNames: string[];
-  disallowedSet: Set<string> | undefined;
-  extensions: boolean | string[];
-}
-```
-
-Extracting this reduces `SessionConfig` from 11 to 8 fields and gives `filterActiveTools` a named input type instead of three positional parameters.
+The tool-filtering cluster (`toolNames`, `disallowedSet`, `extensions`) was extracted into `ToolFilterConfig` and nested as `SessionConfig.toolFilter`.
+`filterActiveTools` now accepts a single `ToolFilterConfig` argument instead of three positional parameters.
+`SessionConfig` reduced from 10 to 8 top-level fields.
 
 #### RunnerIO (9 methods → 2 focused interfaces) — done ([#167][167])
 
@@ -633,10 +624,11 @@ Extracted `parentSessionFile`, `parentSessionId`, `toolCallId` into `ParentSessi
 `RunnerIO` kept as a backward-compatible type alias for the intersection.
 All existing consumers satisfy both sub-interfaces via structural typing with no call-site changes.
 
-### Step 5: Extract ToolFilterConfig from SessionConfig ([#168][168])
+### Step 5: Extract ToolFilterConfig from SessionConfig ([#168][168]) ✓ Done
 
-Extract the tool-filtering cluster into `ToolFilterConfig`.
-Give `filterActiveTools` a named input type.
+`ToolFilterConfig` extracted from `SessionConfig`, grouping `toolNames`, `disallowedSet`, and `extensions`.
+`filterActiveTools` now accepts a single `ToolFilterConfig` argument.
+`SessionConfig` reduced from 10 to 8 top-level fields.
 
 ### Step 6: Extract RunContext from RunOptions ([#169][169])
 
