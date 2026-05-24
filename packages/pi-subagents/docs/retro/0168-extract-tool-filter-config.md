@@ -37,3 +37,40 @@ All 805 tests continue to pass; no new tests were added (pure structural refacto
 - All 9 flat-field assertions in `session-config.test.ts` (`result.toolNames`, `result.extensions`, `result.disallowedSet`) were correctly migrated to `result.toolFilter.*` — grep confirmed no stragglers.
 - `agent-runner-extension-tools.test.ts` required zero changes, confirming its role as a regression canary.
 - Architecture doc updated: `SessionConfig` row in the wide-interface table marked `✓ done`; Step 5 narrative updated to reflect actual field count (10 → 8, not 11 → 8 as the issue stated).
+
+## Stage: Final Retrospective (2026-05-24T20:00:00Z)
+
+### Session summary
+
+Issue #168 completed across three sessions (Planning → TDD → Ship) with zero friction, rework, or plan deviations.
+Total diff: 3 files changed, 37 insertions, 41 deletions (net reduction).
+Released as `pi-subagents-v6.18.5`.
+
+### Observations
+
+#### What went well
+
+- **Grep-before-commit safety net.**
+  The planning session identified 9 flat-field assertions in `session-config.test.ts` that would silently pass as `undefined` if missed during migration.
+  The TDD session grepped for all three field names before committing step 1, catching all 9 in one pass.
+  This is the testing skill’s "grep for all test files" rule applied to assertion migration.
+- **Regression canary identification during planning.**
+  The planning session called out `agent-runner-extension-tools.test.ts` as a zero-change regression canary.
+  The TDD session confirmed this prediction — no changes needed, all existing tests green.
+  Identifying canary tests during planning gave confidence that the two refactoring steps were correctly scoped.
+- **2-step granularity was right.**
+  Step 1 (interface + assembler + tests) left intentional type errors in the consumer.
+  Step 2 (consumer update) resolved them.
+  This kept each commit reviewable and type-check-green at the session-config boundary.
+
+#### What caused friction (agent side)
+
+None.
+
+#### What caused friction (user side)
+
+None.
+
+### Changes made
+
+No process changes — clean execution with no proposals warranted.
