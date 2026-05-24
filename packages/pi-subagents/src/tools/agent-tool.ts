@@ -3,7 +3,7 @@ import type { AgentToolResult } from "@earendil-works/pi-coding-agent";
 import { Text } from "@earendil-works/pi-tui";
 import { Type } from "@sinclair/typebox";
 import { AgentTypeRegistry } from "#src/config/agent-types";
-import type { AgentSpawnConfig } from "#src/lifecycle/agent-manager";
+import type { AgentSpawnConfig, ParentSessionInfo } from "#src/lifecycle/agent-manager";
 import type { ParentSnapshot } from "#src/lifecycle/parent-snapshot";
 import { spawnBackground } from "#src/tools/background-spawner";
 import { runForeground } from "#src/tools/foreground-runner";
@@ -303,6 +303,7 @@ Guidelines:
       // ---- Boundary extraction (after config so inheritContext is resolved) ----
       const snapshot = buildSnapshot(config.execution.inheritContext);
       const { parentSessionFile, parentSessionId } = getSessionInfo();
+      const parentSession: ParentSessionInfo = { parentSessionFile, parentSessionId, toolCallId };
 
       // ---- Resume existing agent ----
       if (params.resume) {
@@ -337,7 +338,7 @@ Guidelines:
           manager,
           widget,
           agentActivity,
-          { config, snapshot, parentSessionFile, parentSessionId, toolCallId },
+          { config, snapshot, parentSession },
         );
       }
 
@@ -346,7 +347,7 @@ Guidelines:
         manager,
         widget,
         agentActivity,
-        { config, snapshot, parentSessionFile, parentSessionId },
+        { config, snapshot, parentSession },
         signal,
         onUpdate,
       );

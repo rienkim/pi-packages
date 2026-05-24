@@ -175,7 +175,7 @@ describe("Agent tool — background execution", () => {
     expect(deps.agentActivity.get("agent-1")).toBeDefined();
   });
 
-  it("passes toolCallId to manager.spawn so the manager wires NotificationState", async () => {
+  it("passes parentSession.toolCallId to manager.spawn so the manager wires NotificationState", async () => {
     const deps = createToolDeps();
     deps.manager.getRecord = vi.fn().mockReturnValue(createTestRecord({ status: "running" }));
     await execute(deps, {
@@ -185,7 +185,7 @@ describe("Agent tool — background execution", () => {
       run_in_background: true,
     });
     const spawnOpts = (deps.manager.spawn as ReturnType<typeof vi.fn>).mock.calls[0][3];
-    expect(spawnOpts.toolCallId).toBe("tc-1");
+    expect(spawnOpts.parentSession?.toolCallId).toBe("tc-1");
   });
 });
 
