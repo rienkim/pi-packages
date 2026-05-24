@@ -94,7 +94,7 @@ describe("agent-runner final output capture", () => {
     const { session } = createSession("LOCKED");
     io.createSession.mockResolvedValue({ session });
 
-    const result = await runAgent(snapshot, "Explore", "Say LOCKED", { exec, registry: mockAgentLookup }, io);
+    const result = await runAgent(snapshot, "Explore", "Say LOCKED", { context: { exec, registry: mockAgentLookup } }, io);
 
     expect(result.responseText).toBe("LOCKED");
   });
@@ -103,7 +103,7 @@ describe("agent-runner final output capture", () => {
     const { session } = createSession("BOUND");
     io.createSession.mockResolvedValue({ session });
 
-    await runAgent(snapshot, "Explore", "Say BOUND", { exec, registry: mockAgentLookup }, io);
+    await runAgent(snapshot, "Explore", "Say BOUND", { context: { exec, registry: mockAgentLookup } }, io);
 
     expect(session.bindExtensions).toHaveBeenCalledTimes(1);
     expect(session.bindExtensions).toHaveBeenCalledWith({});
@@ -117,7 +117,7 @@ describe("agent-runner final output capture", () => {
     const { session } = createSession("CONFIGURED");
     io.createSession.mockResolvedValue({ session });
 
-    await runAgent(snapshot, "Explore", "Say CONFIGURED", { exec, cwd: "/tmp/worktree", registry: mockAgentLookup }, io);
+    await runAgent(snapshot, "Explore", "Say CONFIGURED", { context: { exec, registry: mockAgentLookup, cwd: "/tmp/worktree" } }, io);
 
     expect(io.getAgentDir).toHaveBeenCalledTimes(1);
     expect(io.createResourceLoader).toHaveBeenCalledWith(expect.objectContaining({
@@ -136,7 +136,7 @@ describe("agent-runner final output capture", () => {
     const { session } = createSession("ISOLATED");
     io.createSession.mockResolvedValue({ session });
 
-    await runAgent(snapshot, "Explore", "Say ISOLATED", { exec, registry: mockAgentLookup }, io);
+    await runAgent(snapshot, "Explore", "Say ISOLATED", { context: { exec, registry: mockAgentLookup } }, io);
 
     // noContextFiles skips AGENTS.md/CLAUDE.md at the loader source;
     // appendSystemPromptOverride suppresses APPEND_SYSTEM.md (no flag equivalent).
@@ -155,7 +155,7 @@ describe("agent-runner final output capture", () => {
     const { session } = createSession("WITH_FILE");
     io.createSession.mockResolvedValue({ session });
 
-    const result = await runAgent(snapshot, "Explore", "go", { exec, registry: mockAgentLookup }, io);
+    const result = await runAgent(snapshot, "Explore", "go", { context: { exec, registry: mockAgentLookup } }, io);
 
     expect(result.sessionFile).toBe("/sessions/child.jsonl");
   });
@@ -165,9 +165,11 @@ describe("agent-runner final output capture", () => {
     io.createSession.mockResolvedValue({ session });
 
     await runAgent(snapshot, "Explore", "go", {
-      exec,
-      parentSession: { parentSessionFile: "/sessions/parent.jsonl", parentSessionId: "parent-id-123" },
-      registry: mockAgentLookup,
+      context: {
+        exec,
+        registry: mockAgentLookup,
+        parentSession: { parentSessionFile: "/sessions/parent.jsonl", parentSessionId: "parent-id-123" },
+      },
     }, io);
 
     const sm = io.createSessionManager.mock.results[0].value;
@@ -209,10 +211,9 @@ describe("agent-runner RunOptions — defaultMaxTurns and graceTurns", () => {
     });
 
     const result = await runAgent(snapshot, "Explore", "go", {
-      exec,
+      context: { exec, registry: mockAgentLookup },
       defaultMaxTurns: 2,
       graceTurns: 1,
-      registry: mockAgentLookup,
     }, io);
 
     expect(session.steer).toHaveBeenCalledWith(expect.stringContaining("turn limit"));
@@ -233,10 +234,9 @@ describe("agent-runner RunOptions — defaultMaxTurns and graceTurns", () => {
     });
 
     const result = await runAgent(snapshot, "Explore", "go", {
-      exec,
+      context: { exec, registry: mockAgentLookup },
       defaultMaxTurns: 1,
       graceTurns: 3,
-      registry: mockAgentLookup,
     }, io);
 
     // Steered at turn 1, but not aborted (turn 3 < 1+3=4)
@@ -257,11 +257,10 @@ describe("agent-runner RunOptions — defaultMaxTurns and graceTurns", () => {
     });
 
     await runAgent(snapshot, "Explore", "go", {
-      exec,
+      context: { exec, registry: mockAgentLookup },
       maxTurns: 3, // explicit per-call limit
       defaultMaxTurns: 1, // should be overridden
       graceTurns: 1,
-      registry: mockAgentLookup,
     }, io);
 
     // Only 2 turns fired, maxTurns=3, so steer should NOT be called

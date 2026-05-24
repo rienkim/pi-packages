@@ -225,17 +225,19 @@ export class AgentManager {
 
     const runConfig = this.getRunConfig?.();
     const promise = this.runner.run(snapshot, type, prompt, {
-      exec: this.exec,
+      context: {
+        exec: this.exec,
+        registry: this.registry,
+        cwd: worktreeCwd,
+        parentSession: options.parentSession,
+      },
       model: options.model,
       maxTurns: options.maxTurns,
       defaultMaxTurns: runConfig?.defaultMaxTurns,
       graceTurns: runConfig?.graceTurns,
       isolated: options.isolated,
       thinkingLevel: options.thinkingLevel,
-      cwd: worktreeCwd,
-      parentSession: options.parentSession,
       signal: record.abortController!.signal,
-      registry: this.registry,
       onSessionCreated: (session) => {
         // Capture the session file path early so it's available for display
         // before the run completes (e.g. in background agent status messages).

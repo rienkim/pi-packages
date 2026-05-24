@@ -152,18 +152,31 @@ export type RunnerIO = EnvironmentIO & SessionFactoryIO;
 
 // ── Public interfaces ─────────────────────────────────────────────────────────
 
-export interface RunOptions {
+/**
+ * Parent execution context — where/who is running.
+ *
+ * Groups the four fields that describe the parent environment and identity,
+ * separating them from the per-call execution parameters in RunOptions.
+ */
+export interface RunContext {
   /** Shell-exec callback for detectEnv — injected from pi.exec(). */
   exec: ShellExec;
+  /** Agent config lookup — provides resolveAgentConfig and getToolNamesForType. */
+  registry: AgentConfigLookup;
+  /** Override working directory (e.g. for worktree isolation). */
+  cwd?: string;
+  /** Parent session identity (file path + session ID). */
+  parentSession?: ParentSessionInfo;
+}
+
+export interface RunOptions {
+  /** Parent execution context — where/who is running. */
+  context: RunContext;
   model?: Model<any>;
   maxTurns?: number;
   signal?: AbortSignal;
   isolated?: boolean;
   thinkingLevel?: ThinkingLevel;
-  /** Override working directory (e.g. for worktree isolation). */
-  cwd?: string;
-  /** Parent session identity (file path + session ID). */
-  parentSession?: ParentSessionInfo;
   /** Called once after session creation — session delivery mechanism. */
   onSessionCreated?: (session: AgentSession) => void;
   /**
@@ -177,8 +190,6 @@ export interface RunOptions {
    * module-scope `graceTurns` during migration.
    */
   graceTurns?: number;
-  /** Agent config lookup — provides resolveAgentConfig and getToolNamesForType. */
-  registry: AgentConfigLookup;
 }
 
 export interface RunResult {
@@ -275,8 +286,8 @@ export async function runAgent(
   io: RunnerIO,
 ): Promise<RunResult> {
   // Resolve working directory upfront — needed for detectEnv before assembly.
-  const effectiveCwd = options.cwd ?? snapshot.cwd;
-  const env = await io.detectEnv(options.exec, effectiveCwd);
+  const effectiveCwd = options.context.cwd ?? snapshot.cwd;
+  const env = await io.detectEnv(options.context.exec, effectiveCwd);
 
   // Assemble session configuration (synchronous, no SDK objects).
   const cfg = assembleSessionConfig(
@@ -288,13 +299,13 @@ export async function runAgent(
       modelRegistry: snapshot.modelRegistry,
     },
     {
-      cwd: options.cwd,
+      cwd: options.context.cwd,
       isolated: options.isolated,
       model: options.model,
       thinkingLevel: options.thinkingLevel,
     },
     env,
-    options.registry,
+    options.context.registry,
     io.assemblerIO,
   );
 
@@ -322,9 +333,9 @@ export async function runAgent(
   // Create a persisted SessionManager so transcripts are written in Pi's
   // official JSONL format. Falls back to a temp directory when the parent
   // session is not persisted (e.g. headless/API mode).
-  const sessionDir = io.deriveSessionDir(options.parentSession?.parentSessionFile, cfg.effectiveCwd);
+  const sessionDir = io.deriveSessionDir(options.context.parentSession?.parentSessionFile, cfg.effectiveCwd);
   const sessionManager = io.createSessionManager(cfg.effectiveCwd, sessionDir);
-  sessionManager.newSession({ parentSession: options.parentSession?.parentSessionId });
+  sessionManager.newSession({ parentSession: options.context.parentSession?.parentSessionId });
 
   const { session } = await io.createSession({
     cwd: cfg.effectiveCwd,

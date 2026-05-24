@@ -422,6 +422,8 @@ describe("AgentManager — getRunConfig threads defaultMaxTurns and graceTurns i
     const runOpts = vi.mocked(runner.run).mock.calls[0][3];
     expect(runOpts.defaultMaxTurns).toBe(10);
     expect(runOpts.graceTurns).toBe(3);
+    expect(runOpts.context.exec).toBeDefined();
+    expect(runOpts.context.registry).toBeDefined();
   });
 
   it("omits defaultMaxTurns and graceTurns from runAgent when no getRunConfig is provided", async () => {
@@ -438,6 +440,8 @@ describe("AgentManager — getRunConfig threads defaultMaxTurns and graceTurns i
     const runOpts = vi.mocked(runner.run).mock.calls[0][3];
     expect(runOpts.defaultMaxTurns).toBeUndefined();
     expect(runOpts.graceTurns).toBeUndefined();
+    expect(runOpts.context.exec).toBeDefined();
+    expect(runOpts.context.registry).toBeDefined();
   });
 });
 
@@ -461,8 +465,8 @@ describe("AgentManager — parent session threading", () => {
     await vi.waitFor(() => expect(runner.run).toHaveBeenCalled());
 
     const runOpts = vi.mocked(runner.run).mock.calls[0][3];
-    expect(runOpts.parentSession?.parentSessionFile).toBe("/sessions/parent.jsonl");
-    expect(runOpts.parentSession?.parentSessionId).toBe("parent-session-123");
+    expect(runOpts.context.parentSession?.parentSessionFile).toBe("/sessions/parent.jsonl");
+    expect(runOpts.context.parentSession?.parentSessionId).toBe("parent-session-123");
   });
 });
 

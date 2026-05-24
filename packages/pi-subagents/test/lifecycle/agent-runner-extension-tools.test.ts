@@ -139,7 +139,7 @@ describe("Patch 2: post-bind active-tool re-filter", () => {
     );
     io.createSession.mockResolvedValue({ session });
 
-    await runAgent(snapshot, "test-agent", "go", { exec, registry: mockAgentLookup }, io);
+    await runAgent(snapshot, "test-agent", "go", { context: { exec, registry: mockAgentLookup } }, io);
 
     // Should be called twice: once before bind, once after.
     expect(session.setActiveToolsByName).toHaveBeenCalledTimes(2);
@@ -163,7 +163,7 @@ describe("Patch 2: post-bind active-tool re-filter", () => {
     );
     io.createSession.mockResolvedValue({ session });
 
-    await runAgent(snapshot, "test-agent", "go", { exec, registry: mockAgentLookup }, io);
+    await runAgent(snapshot, "test-agent", "go", { context: { exec, registry: mockAgentLookup } }, io);
 
     // Second (post-bind) call is the re-filter; it should include the
     // extension-registered tool since extensions: true allows everything.
@@ -181,7 +181,7 @@ describe("Patch 2: post-bind active-tool re-filter", () => {
     );
     io.createSession.mockResolvedValue({ session });
 
-    await runAgent(snapshot, "test-agent", "go", { exec, registry: mockAgentLookup }, io);
+    await runAgent(snapshot, "test-agent", "go", { context: { exec, registry: mockAgentLookup } }, io);
 
     const postBindArgs = session.setActiveToolsByName.mock.calls[1][0];
     // Built-in tools are always allowed.
@@ -201,7 +201,7 @@ describe("Patch 2: post-bind active-tool re-filter", () => {
     );
     io.createSession.mockResolvedValue({ session });
 
-    await runAgent(snapshot, "test-agent", "go", { exec, registry: mockAgentLookup }, io);
+    await runAgent(snapshot, "test-agent", "go", { context: { exec, registry: mockAgentLookup } }, io);
 
     const postBindArgs = session.setActiveToolsByName.mock.calls[1][0];
     expect(postBindArgs).toContain("read");
@@ -217,7 +217,7 @@ describe("Patch 2: post-bind active-tool re-filter", () => {
     );
     io.createSession.mockResolvedValue({ session });
 
-    await runAgent(snapshot, "test-agent", "go", { exec, registry: mockAgentLookup }, io);
+    await runAgent(snapshot, "test-agent", "go", { context: { exec, registry: mockAgentLookup } }, io);
 
     const postBindArgs = session.setActiveToolsByName.mock.calls[1][0];
     expect(postBindArgs).toContain("read");
@@ -242,7 +242,7 @@ describe("Patch 2: post-bind active-tool re-filter", () => {
     );
     io.createSession.mockResolvedValue({ session });
 
-    await runAgent(snapshot, "test-agent", "go", { exec, registry: mockAgentLookup }, io);
+    await runAgent(snapshot, "test-agent", "go", { context: { exec, registry: mockAgentLookup } }, io);
 
     expect(session.setActiveToolsByName).toHaveBeenCalledTimes(2);
     const postBindArgs = session.setActiveToolsByName.mock.calls[1][0];
@@ -263,7 +263,7 @@ describe("Patch 2: post-bind active-tool re-filter", () => {
     );
     io.createSession.mockResolvedValue({ session });
 
-    await runAgent(snapshot, "test-agent", "go", { exec, registry: mockAgentLookup }, io);
+    await runAgent(snapshot, "test-agent", "go", { context: { exec, registry: mockAgentLookup } }, io);
 
     expect(session.setActiveToolsByName).not.toHaveBeenCalled();
   });
