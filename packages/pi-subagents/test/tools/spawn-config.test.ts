@@ -26,8 +26,8 @@ describe("resolveSpawnConfig — type resolution", () => {
     );
     expect("error" in result && result.error).toBeFalsy();
     if ("error" in result) return;
-    expect(result.subagentType).toBe("general-purpose");
-    expect(result.fellBack).toBe(false);
+    expect(result.identity.subagentType).toBe("general-purpose");
+    expect(result.identity.fellBack).toBe(false);
   });
 
   it("falls back to general-purpose for unknown agent type", () => {
@@ -39,8 +39,8 @@ describe("resolveSpawnConfig — type resolution", () => {
     );
     expect("error" in result && result.error).toBeFalsy();
     if ("error" in result) return;
-    expect(result.subagentType).toBe("general-purpose");
-    expect(result.fellBack).toBe(true);
+    expect(result.identity.subagentType).toBe("general-purpose");
+    expect(result.identity.fellBack).toBe(true);
   });
 
   it("sets displayName from registry", () => {
@@ -51,7 +51,7 @@ describe("resolveSpawnConfig — type resolution", () => {
       defaultSettings,
     );
     if ("error" in result) return;
-    expect(result.displayName).toBe("Explore");
+    expect(result.identity.displayName).toBe("Explore");
   });
 
   it("uses displayName from agent config when available", () => {
@@ -63,7 +63,7 @@ describe("resolveSpawnConfig — type resolution", () => {
     );
     if ("error" in result) return;
     // general-purpose config has displayName: "Agent"
-    expect(result.displayName).toBe("Agent");
+    expect(result.identity.displayName).toBe("Agent");
   });
 });
 
@@ -77,9 +77,9 @@ describe("resolveSpawnConfig — model resolution", () => {
       defaultSettings,
     );
     if ("error" in result) return;
-    expect(result.model).toBe(parentModel);
+    expect(result.execution.model).toBe(parentModel);
     // modelName is undefined when same as parent
-    expect(result.modelName).toBeUndefined();
+    expect(result.presentation.modelName).toBeUndefined();
   });
 
   it("returns error when user-specified model cannot be resolved", () => {
@@ -102,7 +102,7 @@ describe("resolveSpawnConfig — max turns normalization", () => {
       defaultSettings,
     );
     if ("error" in result) return;
-    expect(result.effectiveMaxTurns).toBe(10);
+    expect(result.execution.effectiveMaxTurns).toBe(10);
   });
 
   it("uses settings defaultMaxTurns when no max_turns in params", () => {
@@ -113,7 +113,7 @@ describe("resolveSpawnConfig — max turns normalization", () => {
       { defaultMaxTurns: 25 },
     );
     if ("error" in result) return;
-    expect(result.effectiveMaxTurns).toBe(25);
+    expect(result.execution.effectiveMaxTurns).toBe(25);
   });
 
   it("returns undefined effectiveMaxTurns when neither params nor settings specify", () => {
@@ -124,7 +124,7 @@ describe("resolveSpawnConfig — max turns normalization", () => {
       defaultSettings,
     );
     if ("error" in result) return;
-    expect(result.effectiveMaxTurns).toBeUndefined();
+    expect(result.execution.effectiveMaxTurns).toBeUndefined();
   });
 });
 
@@ -137,7 +137,7 @@ describe("resolveSpawnConfig — invocation fields", () => {
       defaultSettings,
     );
     if ("error" in result) return;
-    expect(result.runInBackground).toBe(true);
+    expect(result.execution.runInBackground).toBe(true);
   });
 
   it("sets isolated from params", () => {
@@ -148,7 +148,7 @@ describe("resolveSpawnConfig — invocation fields", () => {
       defaultSettings,
     );
     if ("error" in result) return;
-    expect(result.isolated).toBe(true);
+    expect(result.execution.isolated).toBe(true);
   });
 
   it("sets isolation from params", () => {
@@ -159,7 +159,7 @@ describe("resolveSpawnConfig — invocation fields", () => {
       defaultSettings,
     );
     if ("error" in result) return;
-    expect(result.isolation).toBe("worktree");
+    expect(result.execution.isolation).toBe("worktree");
   });
 
   it("builds agentInvocation snapshot", () => {
@@ -170,7 +170,7 @@ describe("resolveSpawnConfig — invocation fields", () => {
       defaultSettings,
     );
     if ("error" in result) return;
-    expect(result.agentInvocation).toEqual({
+    expect(result.execution.agentInvocation).toEqual({
       modelName: undefined,
       thinking: "high",
       maxTurns: undefined,
@@ -191,9 +191,9 @@ describe("resolveSpawnConfig — detailBase and tags", () => {
       defaultSettings,
     );
     if ("error" in result) return;
-    expect(result.detailBase.description).toBe("my task");
-    expect(result.detailBase.subagentType).toBe("general-purpose");
-    expect(result.detailBase.displayName).toBe("Agent");
+    expect(result.presentation.detailBase.description).toBe("my task");
+    expect(result.presentation.detailBase.subagentType).toBe("general-purpose");
+    expect(result.presentation.detailBase.displayName).toBe("Agent");
   });
 
   it("includes thinking tag when thinking is set", () => {
@@ -204,7 +204,7 @@ describe("resolveSpawnConfig — detailBase and tags", () => {
       defaultSettings,
     );
     if ("error" in result) return;
-    expect(result.agentTags).toContain("thinking: high");
+    expect(result.presentation.agentTags).toContain("thinking: high");
   });
 
   it("omits mode label for replace-mode agents", () => {
@@ -216,7 +216,7 @@ describe("resolveSpawnConfig — detailBase and tags", () => {
     );
     if ("error" in result) return;
     // Explore has promptMode: "replace" → no mode label, no invocation overrides
-    expect(result.agentTags).toEqual([]);
+    expect(result.presentation.agentTags).toEqual([]);
   });
 
   it("includes twin tag for append-mode agents like general-purpose", () => {
@@ -228,7 +228,7 @@ describe("resolveSpawnConfig — detailBase and tags", () => {
     );
     if ("error" in result) return;
     // general-purpose has promptMode: "append" → gets "twin" label
-    expect(result.agentTags).toContain("twin");
+    expect(result.presentation.agentTags).toContain("twin");
   });
 
   it("sets tags to undefined on detailBase for replace-mode agents with no invocation overrides", () => {
@@ -240,7 +240,7 @@ describe("resolveSpawnConfig — detailBase and tags", () => {
     );
     if ("error" in result) return;
     // Explore has promptMode: "replace" and no invocation overrides → no tags
-    expect(result.detailBase.tags).toBeUndefined();
+    expect(result.presentation.detailBase.tags).toBeUndefined();
   });
 });
 
@@ -253,7 +253,7 @@ describe("resolveSpawnConfig — prompt and rawType passthrough", () => {
       defaultSettings,
     );
     if ("error" in result) return;
-    expect(result.prompt).toBe("search for bugs");
-    expect(result.rawType).toBe("Explore");
+    expect(result.execution.prompt).toBe("search for bugs");
+    expect(result.identity.rawType).toBe("Explore");
   });
 });

@@ -26,12 +26,16 @@ export interface ModelInfo {
   modelRegistry: unknown;
 }
 
-/** Fully resolved config for spawning an agent. */
-export interface ResolvedSpawnConfig {
+/** Identity: who is being spawned. */
+export interface SpawnIdentity {
   subagentType: string;
   rawType: SubagentType;
   fellBack: boolean;
   displayName: string;
+}
+
+/** Execution: how the agent will run. */
+export interface SpawnExecution {
   prompt: string;
   description: string;
   model: Model<any> | undefined;
@@ -41,10 +45,21 @@ export interface ResolvedSpawnConfig {
   runInBackground: boolean;
   isolated: boolean;
   isolation: IsolationMode | undefined;
-  modelName: string | undefined;
   agentInvocation: AgentInvocation;
+}
+
+/** Presentation: display/UI values derived from identity and execution. */
+export interface SpawnPresentation {
+  modelName: string | undefined;
   agentTags: string[];
   detailBase: Pick<AgentDetails, "displayName" | "description" | "subagentType" | "modelName" | "tags">;
+}
+
+/** Fully resolved config for spawning an agent — composed of domain-aligned sub-interfaces. */
+export interface ResolvedSpawnConfig {
+  identity: SpawnIdentity;
+  execution: SpawnExecution;
+  presentation: SpawnPresentation;
 }
 
 /** Error result when model resolution fails. */
@@ -126,22 +141,19 @@ export function resolveSpawnConfig(
   };
 
   return {
-    subagentType,
-    rawType,
-    fellBack,
-    displayName,
-    prompt: params.prompt as string,
-    description: params.description as string,
-    model,
-    effectiveMaxTurns,
-    thinking,
-    inheritContext,
-    runInBackground,
-    isolated,
-    isolation,
-    modelName,
-    agentInvocation,
-    agentTags,
-    detailBase,
+    identity: { subagentType, rawType, fellBack, displayName },
+    execution: {
+      prompt: params.prompt as string,
+      description: params.description as string,
+      model,
+      effectiveMaxTurns,
+      thinking,
+      inheritContext,
+      runInBackground,
+      isolated,
+      isolation,
+      agentInvocation,
+    },
+    presentation: { modelName, agentTags, detailBase },
   };
 }
