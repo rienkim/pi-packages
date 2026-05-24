@@ -446,7 +446,7 @@ Bags with 10+ fields are the highest priority for decomposition.
 | --------------------------- | ------------------------------------------------------ | ------------------------------------------------- | -------- |
 | `ResolvedSpawnConfig`       | 3 nested                                               | foreground-runner, background-spawner, agent-tool | ✓ done   |
 | `AgentSpawnConfig`          | 13 → 13 (ParentSessionInfo nested)                     | agent-manager (internal)                          | ✓ done   |
-| `RunOptions`                | 12                                                     | agent-runner                                      | High     |
+| `RunOptions`                | 9 (`RunContext` nested)                                | agent-runner                                      | ✓ done   |
 | `SessionConfig`             | 8 (ToolFilterConfig nested)                            | agent-runner (output of assembler)                | ✓ done   |
 | `NotificationDetails`       | 10                                                     | notification                                      | Medium   |
 | `ResourceLoaderOptions`     | 10                                                     | agent-runner (SDK bridge)                         | Medium   |
@@ -543,22 +543,23 @@ export interface ParentSessionInfo {
 
 `AgentSpawnConfig` now carries `parentSession?: ParentSessionInfo` instead of three flat optional fields.
 
-#### RunOptions (12 fields → extract RunContext)
+#### RunOptions (12 fields → extract RunContext) — done ([#169][169])
 
-The `RunOptions` bag mixes execution parameters with context information:
+The `RunOptions` bag mixes execution parameters with context information.
+`RunContext` was extracted and nested as `RunOptions.context`:
 
 ```typescript
-/** Parent context needed to configure the child session. */
-interface RunContext {
-  cwd?: string;
-  parentSessionFile?: string;
-  parentSessionId?: string;
+/** Parent execution context — where/who is running. */
+export interface RunContext {
   exec: ShellExec;
   registry: AgentConfigLookup;
+  cwd?: string;
+  parentSession?: ParentSessionInfo;
 }
 ```
 
 The remaining `RunOptions` fields (`model`, `maxTurns`, `signal`, `isolated`, `thinkingLevel`, `defaultMaxTurns`, `graceTurns`, `onSessionCreated`) are genuine execution parameters.
+`RunOptions` now has 9 fields: 1 nested `context: RunContext` plus 8 flat execution fields.
 
 #### SessionConfig (11 fields → extract ToolFilterConfig) — done ([#168][168])
 
@@ -630,10 +631,10 @@ All existing consumers satisfy both sub-interfaces via structural typing with no
 `filterActiveTools` now accepts a single `ToolFilterConfig` argument.
 `SessionConfig` reduced from 10 to 8 top-level fields.
 
-### Step 6: Extract RunContext from RunOptions ([#169][169])
+### Step 6: Extract RunContext from RunOptions ([#169][169]) ✓ Done
 
-Extract context fields into `RunContext`.
-Reduces RunOptions from 12 to 7 fields.
+Extracted `exec`, `registry`, `cwd`, and `parentSession` into `RunContext`, nested as `RunOptions.context`.
+`RunOptions` reduced from 12 to 9 fields (1 nested `context` + 8 flat execution fields).
 
 ### Step 7: Reduce buildContentLines complexity ([#170][170])
 
