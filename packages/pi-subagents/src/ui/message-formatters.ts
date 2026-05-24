@@ -156,3 +156,33 @@ export function formatAssistantMessage(
   }
   return lines;
 }
+
+// ── formatMessage dispatcher ───────────────────────────────────────────────
+
+/**
+ * Dispatch a session message to the appropriate formatter.
+ * Returns null for empty/skippable messages and unknown roles.
+ */
+export function formatMessage(
+  msg: { role: string; [key: string]: unknown },
+  width: number,
+  ctx: FormatterContext,
+): string[] | null {
+  if (msg.role === "user") {
+    return formatUserMessage(msg.content as string | unknown[], width, ctx);
+  }
+  if (msg.role === "assistant") {
+    return formatAssistantMessage(
+      msg.content as { type: string; [key: string]: unknown }[],
+      width,
+      ctx,
+    );
+  }
+  if (msg.role === "toolResult") {
+    return formatToolResult(msg.content as unknown[], width, ctx);
+  }
+  if (isBashExecution(msg)) {
+    return formatBashExecution(msg, width, ctx);
+  }
+  return null;
+}

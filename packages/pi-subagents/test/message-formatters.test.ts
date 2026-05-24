@@ -4,6 +4,7 @@ import type { BashExecutionMessage, FormatterContext } from "#src/ui/message-for
 import {
   formatAssistantMessage,
   formatBashExecution,
+  formatMessage,
   formatStreamingIndicator,
   formatToolResult,
   formatUserMessage,
@@ -310,6 +311,45 @@ describe("message-formatters", () => {
     it("includes accent-colored cursor marker", () => {
       const result = formatStreamingIndicator(new Map(), undefined, 80, labelTheme);
       expect(result[1]).toContain("[accent:\u25cd ");
+    });
+  });
+
+  describe("formatMessage", () => {
+    const ctx: FormatterContext = { theme: plainTheme, wrapText: noWrap };
+
+    it("returns null for an unknown role", () => {
+      expect(formatMessage({ role: "system" }, 80, ctx)).toBeNull();
+    });
+
+    it("returns null for empty user message", () => {
+      expect(formatMessage({ role: "user", content: "" }, 80, ctx)).toBeNull();
+    });
+
+    it("delegates user role to formatUserMessage", () => {
+      const result = formatMessage({ role: "user", content: "hi" }, 80, ctx);
+      expect(result).toEqual(formatUserMessage("hi", 80, ctx));
+    });
+
+    it("delegates assistant role to formatAssistantMessage", () => {
+      const content = [{ type: "text", text: "response" }];
+      const result = formatMessage({ role: "assistant", content }, 80, ctx);
+      expect(result).toEqual(formatAssistantMessage(content, 80, ctx));
+    });
+
+    it("delegates toolResult role to formatToolResult", () => {
+      const content = [{ type: "text", text: "result" }];
+      const result = formatMessage({ role: "toolResult", content }, 80, ctx);
+      expect(result).toEqual(formatToolResult(content, 80, ctx));
+    });
+
+    it("returns null for empty toolResult content", () => {
+      expect(formatMessage({ role: "toolResult", content: [] }, 80, ctx)).toBeNull();
+    });
+
+    it("delegates bashExecution role to formatBashExecution", () => {
+      const msg = { role: "bashExecution" as const, command: "ls", output: "file.ts" };
+      const result = formatMessage(msg, 80, ctx);
+      expect(result).toEqual(formatBashExecution(msg, 80, ctx));
     });
   });
 });
