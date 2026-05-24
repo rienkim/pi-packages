@@ -9,6 +9,7 @@ import {
   type SettingsManager,
 } from "@earendil-works/pi-coding-agent";
 import type { AgentConfigLookup } from "#src/config/agent-types";
+import type { ParentSessionInfo } from "#src/lifecycle/agent-manager";
 import type { ParentSnapshot } from "#src/lifecycle/parent-snapshot";
 import { extractText } from "#src/session/context";
 import type { EnvInfo } from "#src/session/env";
@@ -146,10 +147,8 @@ export interface RunOptions {
   thinkingLevel?: ThinkingLevel;
   /** Override working directory (e.g. for worktree isolation). */
   cwd?: string;
-  /** Path to the parent session's JSONL file (for deriving the subagent session directory). */
-  parentSessionFile?: string;
-  /** Session ID of the parent agent (stored in the child session's parentSession header). */
-  parentSessionId?: string;
+  /** Parent session identity (file path + session ID). */
+  parentSession?: ParentSessionInfo;
   /** Called once after session creation — session delivery mechanism. */
   onSessionCreated?: (session: AgentSession) => void;
   /**
@@ -308,9 +307,9 @@ export async function runAgent(
   // Create a persisted SessionManager so transcripts are written in Pi's
   // official JSONL format. Falls back to a temp directory when the parent
   // session is not persisted (e.g. headless/API mode).
-  const sessionDir = io.deriveSessionDir(options.parentSessionFile, cfg.effectiveCwd);
+  const sessionDir = io.deriveSessionDir(options.parentSession?.parentSessionFile, cfg.effectiveCwd);
   const sessionManager = io.createSessionManager(cfg.effectiveCwd, sessionDir);
-  sessionManager.newSession({ parentSession: options.parentSessionId });
+  sessionManager.newSession({ parentSession: options.parentSession?.parentSessionId });
 
   const { session } = await io.createSession({
     cwd: cfg.effectiveCwd,

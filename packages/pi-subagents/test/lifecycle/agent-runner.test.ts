@@ -165,8 +165,7 @@ describe("agent-runner final output capture", () => {
 
     await runAgent(snapshot, "Explore", "go", {
       exec,
-      parentSessionFile: "/sessions/parent.jsonl",
-      parentSessionId: "parent-id-123",
+      parentSession: { parentSessionFile: "/sessions/parent.jsonl", parentSessionId: "parent-id-123" },
       registry: mockAgentLookup,
     }, io);
 
