@@ -56,15 +56,6 @@ describe("subscribeRecordObserver", () => {
     expect(record.lifetimeUsage).toEqual({ input: 0, output: 0, cacheWrite: 0 });
   });
 
-  it("ignores message_end without usage", () => {
-    const session = createMockSession();
-    const record = makeRecord();
-    subscribeRecordObserver(session, record);
-
-    session.emit({ type: "message_end", message: { role: "assistant" } });
-    expect(record.lifetimeUsage).toEqual({ input: 0, output: 0, cacheWrite: 0 });
-  });
-
   it("increments compactionCount on compaction_end (not aborted)", () => {
     const session = createMockSession();
     const record = makeRecord();

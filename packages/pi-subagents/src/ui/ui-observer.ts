@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument -- Pi SDK types are not fully exported; see upstream Pi SDK for type improvements */
 /**
  * ui-observer.ts — Subscribes to session events and updates AgentActivityTracker state.
  *
@@ -7,12 +6,8 @@
  * turn count, lifetime usage).
  */
 
+import type { SubscribableSession } from "#src/types";
 import type { AgentActivityTracker } from "#src/ui/agent-activity-tracker";
-
-/** Narrow session interface — only the subscribe method needed by the observer. */
-interface SubscribableSession {
-	subscribe(fn: (event: any) => void): () => void;
-}
 
 /**
  * Subscribe to session events and stream UI state into an AgentActivityTracker.
@@ -34,7 +29,7 @@ export function subscribeUIObserver(
 	tracker: AgentActivityTracker,
 	onUpdate?: () => void,
 ): () => void {
-	return session.subscribe((event: any) => {
+	return session.subscribe((event) => {
 		if (event.type === "tool_execution_start") {
 			tracker.onToolStart(event.toolName);
 			onUpdate?.();
@@ -51,7 +46,7 @@ export function subscribeUIObserver(
 
 		if (
 			event.type === "message_update" &&
-			event.assistantMessageEvent?.type === "text_delta"
+			event.assistantMessageEvent.type === "text_delta"
 		) {
 			tracker.onMessageUpdate(event.assistantMessageEvent.delta);
 			onUpdate?.();

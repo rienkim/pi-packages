@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment -- Pi SDK types are not fully exported; see upstream Pi SDK for type improvements */
 /**
  * record-observer.ts — Subscribes to session events and updates AgentRecord stats.
  *
@@ -8,11 +7,7 @@
 
 import type { CompactionInfo } from "#src/lifecycle/agent-manager";
 import type { AgentRecord } from "#src/lifecycle/agent-record";
-
-/** Narrow session interface — only the subscribe method needed by the observer. */
-interface SubscribableSession {
-  subscribe(fn: (event: any) => void): () => void;
-}
+import type { SubscribableSession } from "#src/types";
 
 export interface RecordObserverOptions {
   onCompact?: (record: AgentRecord, info: CompactionInfo) => void;
@@ -33,20 +28,18 @@ export function subscribeRecordObserver(
   record: AgentRecord,
   options?: RecordObserverOptions,
 ): () => void {
-  return session.subscribe((event: any) => {
+  return session.subscribe((event) => {
     if (event.type === "tool_execution_end") {
       record.incrementToolUses();
     }
 
-    if (event.type === "message_end" && event.message?.role === "assistant") {
+    if (event.type === "message_end" && event.message.role === "assistant") {
       const u = event.message.usage;
-      if (u) {
-        record.addUsage({
-          input: u.input ?? 0,
-          output: u.output ?? 0,
-          cacheWrite: u.cacheWrite ?? 0,
-        });
-      }
+      record.addUsage({
+        input: u.input,
+        output: u.output,
+        cacheWrite: u.cacheWrite,
+      });
     }
 
     if (event.type === "compaction_end" && !event.aborted && event.result) {

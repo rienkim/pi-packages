@@ -3,10 +3,19 @@
  */
 
 import type { ThinkingLevel } from "@earendil-works/pi-ai";
+import type { AgentSessionEvent } from "@earendil-works/pi-coding-agent";
 
 
 export { AgentRecord } from "#src/lifecycle/agent-record";
-export type { ThinkingLevel };
+export type { AgentSessionEvent, ThinkingLevel };
+
+/**
+ * Narrow session interface for event subscription.
+ * Used by record-observer and ui-observer — only the subscribe method is needed.
+ */
+export interface SubscribableSession {
+  subscribe(fn: (event: AgentSessionEvent) => void): () => void;
+}
 
 /** Agent type: any string name (built-in defaults or user-defined). */
 export type SubagentType = string;
