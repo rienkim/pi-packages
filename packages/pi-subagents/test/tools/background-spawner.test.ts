@@ -54,9 +54,7 @@ function makeParams(overrides: Partial<BackgroundParams> = {}): BackgroundParams
   return {
     config: makeConfig(),
     snapshot: STUB_SNAPSHOT,
-    parentSessionFile: "/sessions/parent.jsonl",
-    parentSessionId: "session-1",
-    toolCallId: "tc-1",
+    parentSession: { parentSessionFile: "/sessions/parent.jsonl", parentSessionId: "session-1", toolCallId: "tc-1" },
     ...overrides,
   };
 }
@@ -75,11 +73,11 @@ describe("spawnBackground", () => {
     expect(widget.update).toHaveBeenCalledOnce();
   });
 
-  it("passes toolCallId to manager.spawn so manager wires NotificationState", () => {
+  it("passes parentSession.toolCallId to manager.spawn so manager wires NotificationState", () => {
     const { manager, widget, agentActivity } = createToolDeps();
-    spawnBackground(manager, widget, agentActivity, makeParams({ toolCallId: "tc-99" }));
+    spawnBackground(manager, widget, agentActivity, makeParams({ parentSession: { toolCallId: "tc-99" } }));
     const spawnOpts = (manager.spawn as ReturnType<typeof vi.fn>).mock.calls[0][3];
-    expect(spawnOpts.toolCallId).toBe("tc-99");
+    expect(spawnOpts.parentSession?.toolCallId).toBe("tc-99");
   });
 
   it("returns text result with agent ID and description", () => {

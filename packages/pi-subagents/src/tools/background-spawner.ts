@@ -1,4 +1,4 @@
-import type { AgentSpawnConfig } from "#src/lifecycle/agent-manager";
+import type { AgentSpawnConfig, ParentSessionInfo } from "#src/lifecycle/agent-manager";
 import type { ParentSnapshot } from "#src/lifecycle/parent-snapshot";
 import type { AgentActivityAccess } from "#src/tools/agent-tool";
 import { textResult } from "#src/tools/helpers";
@@ -24,9 +24,7 @@ export interface BackgroundWidgetDeps {
 export interface BackgroundParams {
   config: ResolvedSpawnConfig;
   snapshot: ParentSnapshot;
-  parentSessionFile: string;
-  parentSessionId: string;
-  toolCallId: string;
+  parentSession: ParentSessionInfo;
 }
 
 /**
@@ -46,8 +44,7 @@ export function spawnBackground(
   let id: string;
   try {
     id = manager.spawn(params.snapshot, identity.subagentType, execution.prompt, {
-      parentSessionFile: params.parentSessionFile,
-      parentSessionId: params.parentSessionId,
+      parentSession: params.parentSession,
       description: execution.description,
       model: execution.model,
       maxTurns: execution.effectiveMaxTurns,
@@ -57,7 +54,6 @@ export function spawnBackground(
       isBackground: true,
       isolation: execution.isolation,
       invocation: execution.agentInvocation,
-      toolCallId: params.toolCallId,
       onSessionCreated: (session) => {
         bgState.setSession(session);
         subscribeUIObserver(session, bgState);
