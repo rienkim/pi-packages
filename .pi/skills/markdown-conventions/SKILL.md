@@ -1,8 +1,9 @@
 ---
 name: markdown-conventions
 description: |
-  Markdownlint rules, documentation frontmatter schema, and doc conventions.
-  Load when writing or editing markdown files.
+  Project-specific markdown rules (one-sentence-per-line, compact tables, sequential numbering)
+  and YAML frontmatter schema for plans/retros.
+  Load when writing or editing markdown — contains rules that differ from standard markdownlint defaults.
 ---
 
 # Markdown Conventions

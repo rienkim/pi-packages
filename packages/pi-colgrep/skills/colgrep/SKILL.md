@@ -1,6 +1,10 @@
 ---
 name: colgrep
-description: "Semantic and hybrid code search with ColGrep. Use when you need to find code by intent or meaning rather than exact text patterns. Covers search patterns, grep-compatible flags, and when to use colgrep vs the built-in grep."
+description: |
+  Decision heuristics for choosing between colgrep (semantic/hybrid) and grep (exact match)
+  during code exploration. Load before exploring unfamiliar code — contains the
+  grep-vs-colgrep decision table and hybrid search strategies that prevent
+  defaulting to grep for everything.
 ---
 
 <!-- Adapted from ColGrep SKILL.md (https://github.com/lightonai/next-plaid)
@@ -11,6 +15,13 @@ description: "Semantic and hybrid code search with ColGrep. Use when you need to
 
 ColGrep provides semantic and hybrid code search using ColBERT embeddings and tree-sitter parsing.
 It complements the built-in `grep` tool — use `colgrep` for intent-based exploration, use `grep` for exact pattern matching.
+
+## Why Load This Skill
+
+This skill is not just a CLI reference — it contains decision heuristics for choosing the right search tool during exploration.
+Without loading it, the default behavior is to reach for `grep` for all searches, missing opportunities where semantic search would find relevant code faster (e.g., "how does this package handle model resolution" vs. grepping for a symbol you already know).
+
+Load this skill **before** starting exploration, not after.
 
 ## Quick Reference
 
