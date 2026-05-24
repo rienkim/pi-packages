@@ -37,3 +37,30 @@ Type check and lint both clean after all steps.
 - `RunOptions` in `agent-runner.ts` needed a new import of `ParentSessionInfo` from `agent-manager.ts`; no circular dependency since `agent-runner.ts` already imports from `agent-manager.ts`.
 - `agent-tool.ts` still imports `AgentSpawnConfig` (needed by `AgentToolManager` interface) — the new `ParentSessionInfo` import was added alongside it.
 - All 5 commits are clean `refactor:` messages; architecture doc update is a separate `docs:` commit.
+
+## Stage: Final Retrospective (2026-05-24T18:00:00Z)
+
+### Session summary
+
+Planning, TDD implementation (5 steps), shipping, and CI verification all completed in a single session.
+Released as `pi-subagents-v6.18.2`.
+Zero rework — every TDD step went green on first attempt.
+
+### Observations
+
+#### What went well
+
+- The planning session's identification of the deep-merge trap in `background-spawner.test.ts`'s `makeParams` factory paid off — the TDD implementation handled it without friction because the risk was anticipated.
+- The 5-step inside-out TDD order (manager → runner → background → foreground → agent-tool) was the right sequence.
+  Each step only introduced type errors in files that subsequent steps would fix, with no circular breakage.
+- Clean mechanical execution — 805 tests before and after, zero rework commits, lint and type-check clean throughout.
+
+#### What caused friction (agent side)
+
+- `missing-context` — The plan repeated the issue body's stale "13 fields" count without verifying against the actual `AgentSpawnConfig` interface (which had 15 fields after `bypassQueue` was added in a prior issue).
+  The plan also inconsistently claimed the extraction would reduce the count to both "11" and "10" in different places.
+  Impact: required corrections in the architecture doc update, but no implementation rework.
+
+#### What caused friction (user side)
+
+- None observed — the user let the session run autonomously through all stages without intervention.
