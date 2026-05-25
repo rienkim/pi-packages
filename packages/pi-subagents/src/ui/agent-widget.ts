@@ -144,55 +144,59 @@ export class AgentWidget {
     });
   }
 
-  /** Force an immediate widget update. */
-  update() {
-    if (!this.uiCtx) return;
-    const allAgents = this.manager.listAgents();
-
-    // Lightweight existence checks — full categorization happens in renderWidget()
-    let runningCount = 0;
-    let queuedCount = 0;
-    let hasFinished = false;
-    for (const a of allAgents) {
-      if (a.status === "running") { runningCount++; }
-      else if (a.status === "queued") { queuedCount++; }
-      else if (a.completedAt && this.shouldShowFinished(a.id, a.status)) { hasFinished = true; }
+  /**
+   * Unregister the widget, clear the status bar, stop the interval timer, and
+   * purge stale `finishedTurnAge` entries for agents no longer in `allAgents`.
+   * Called only from `update`'s idle path — not from `dispose`.
+   */
+  private clearWidget(allAgents: readonly AgentSummary[]): void {
+    if (this.widgetRegistered) {
+      this.uiCtx!.setWidget("agents", undefined);
+      this.widgetRegistered = false;
+      this.tui = undefined;
     }
-    const hasActive = runningCount > 0 || queuedCount > 0;
-
-    // Nothing to show — clear widget
-    if (!hasActive && !hasFinished) {
-      if (this.widgetRegistered) {
-        this.uiCtx.setWidget("agents", undefined);
-        this.widgetRegistered = false;
-        this.tui = undefined;
-      }
-      if (this.lastStatusText !== undefined) {
-        this.uiCtx.setStatus("subagents", undefined);
-        this.lastStatusText = undefined;
-      }
-      if (this.widgetInterval) { clearInterval(this.widgetInterval); this.widgetInterval = undefined; }
-      // Clean up stale entries
-      for (const [id] of this.finishedTurnAge) {
-        if (!allAgents.some(a => a.id === id)) this.finishedTurnAge.delete(id);
-      }
-      return;
+    if (this.lastStatusText !== undefined) {
+      this.uiCtx!.setStatus("subagents", undefined);
+      this.lastStatusText = undefined;
     }
+    if (this.widgetInterval) { clearInterval(this.widgetInterval); this.widgetInterval = undefined; }
+    for (const [id] of this.finishedTurnAge) {
+      if (!allAgents.some(a => a.id === id)) this.finishedTurnAge.delete(id);
+    }
+  }
 
-    // Status bar — only call setStatus when the text actually changes
+  /**
+   * Compute the status bar text from the current widget state and call
+   * `setStatus` only when it differs from the last cached value.
+   */
+  private updateStatusBar(state: WidgetState): void {
     let newStatusText: string | undefined;
-    if (hasActive) {
+    if (state.hasActive) {
       const statusParts: string[] = [];
-      if (runningCount > 0) statusParts.push(`${runningCount} running`);
-      if (queuedCount > 0) statusParts.push(`${queuedCount} queued`);
-      const total = runningCount + queuedCount;
+      if (state.runningCount > 0) statusParts.push(`${state.runningCount} running`);
+      if (state.queuedCount > 0) statusParts.push(`${state.queuedCount} queued`);
+      const total = state.runningCount + state.queuedCount;
       newStatusText = `${statusParts.join(", ")} agent${total === 1 ? "" : "s"}`;
     }
     if (newStatusText !== this.lastStatusText) {
-      this.uiCtx.setStatus("subagents", newStatusText);
+      this.uiCtx!.setStatus("subagents", newStatusText);
       this.lastStatusText = newStatusText;
     }
+  }
 
+  /** Force an immediate widget update. */
+  update() {
+    if (!this.uiCtx) return;
+
+    const allAgents = this.manager.listAgents();
+    const state = assembleWidgetState(allAgents, (id, status) => this.shouldShowFinished(id, status));
+
+    if (!state.hasActive && !state.hasFinished) {
+      this.clearWidget(allAgents);
+      return;
+    }
+
+    this.updateStatusBar(state);
     this.widgetFrame++;
 
     // Register widget callback once; subsequent updates use requestRender()
