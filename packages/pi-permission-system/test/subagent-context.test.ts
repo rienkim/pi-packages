@@ -5,6 +5,7 @@ import {
   isSubagentExecutionContext,
   normalizeFilesystemPath,
 } from "#src/subagent-context";
+import { SubagentSessionRegistry } from "#src/subagent-registry";
 
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -195,5 +196,69 @@ describe("isSubagentExecutionContext — session dir detection", () => {
 
   test("returns false when getSessionDir returns empty string", () => {
     expect(isSubagentExecutionContext(makeCtx(""), subagentRoot)).toBe(false);
+  });
+});
+
+describe("isSubagentExecutionContext — registry detection", () => {
+  const subagentRoot = "/home/user/.pi/agent/sessions/subagents";
+  const outsideDir =
+    "/home/user/projects/my-app/.pi/agent/sessions/parent/tasks";
+
+  test("returns true when session dir is registered (no env vars, outside filesystem root)", () => {
+    const registry = new SubagentSessionRegistry();
+    registry.register(outsideDir, { agentName: "Explore" });
+    expect(
+      isSubagentExecutionContext(makeCtx(outsideDir), subagentRoot, registry),
+    ).toBe(true);
+  });
+
+  test("returns true when registered session has a parentSessionId", () => {
+    const registry = new SubagentSessionRegistry();
+    registry.register(outsideDir, {
+      agentName: "Plan",
+      parentSessionId: "parent-123",
+    });
+    expect(
+      isSubagentExecutionContext(makeCtx(outsideDir), subagentRoot, registry),
+    ).toBe(true);
+  });
+
+  test("returns false when registry is provided but session dir is not registered", () => {
+    const registry = new SubagentSessionRegistry();
+    expect(
+      isSubagentExecutionContext(makeCtx(outsideDir), subagentRoot, registry),
+    ).toBe(false);
+  });
+
+  test("returns false when session dir is null and registry has no matching entry", () => {
+    const registry = new SubagentSessionRegistry();
+    expect(
+      isSubagentExecutionContext(makeCtx(null), subagentRoot, registry),
+    ).toBe(false);
+  });
+
+  test("registry check takes priority over env var detection", () => {
+    // Registry says registered; env var not set — should still return true.
+    const registry = new SubagentSessionRegistry();
+    registry.register(outsideDir, { agentName: "Explore" });
+    // Confirm no env var is set
+    expect(process.env.PI_IS_SUBAGENT).toBeUndefined();
+    expect(
+      isSubagentExecutionContext(makeCtx(outsideDir), subagentRoot, registry),
+    ).toBe(true);
+  });
+
+  test("unregistered session falls through to env var detection", () => {
+    vi.stubEnv("PI_IS_SUBAGENT", "true");
+    const registry = new SubagentSessionRegistry(); // empty — outsideDir not registered
+    // Env var present → still true even without registry entry
+    expect(
+      isSubagentExecutionContext(makeCtx(outsideDir), subagentRoot, registry),
+    ).toBe(true);
+  });
+
+  test("no registry passed — existing behaviour unchanged", () => {
+    // Ensure the parameter is truly optional (no registry arg)
+    expect(isSubagentExecutionContext(makeCtx(null), subagentRoot)).toBe(false);
   });
 });
