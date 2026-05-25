@@ -79,6 +79,22 @@ Frame as opportunity, not criticism.
 Record wins only if they are novel or surprising — a new pattern working for the first time, a tool proving its value, a notably clean execution.
 Skip routine successes.
 
+### Diagnostic lenses
+
+After categorizing friction points, run these four structured analyses.
+Include findings in the retro file under a `### Diagnostic details` subsection when any lens produces actionable observations.
+Skip a lens entirely when it finds nothing notable.
+
+1. **Model-performance correlation** — for each subagent dispatch (if any), note which model ran and what task it performed.
+   Flag quality mismatches: a reasoning-weak model on judgment-heavy work (architecture decisions, code review), or a high-cost model on purely mechanical work (formatting, simple grep).
+   If the `read_session` or `read_parent_session` tools are available, use them to inspect model assignments from the session data.
+2. **Escalation-delay tracking** — for each `rabbit-hole` friction point, count how many consecutive tool calls the agent spent on the same error or approach before resolving or changing strategy.
+   Flag sequences longer than 5 consecutive tool calls on the same error as "should have dispatched an Explore or Plan subagent" or "should have asked the user."
+3. **Unused-tool detection** — for each `rabbit-hole` or `missing-context` friction point, check whether a subagent type or tool was available that could have helped but was never dispatched.
+   Examples: an Explore agent for codebase understanding, `colgrep` for semantic search, `web_search` for library docs.
+4. **Feedback-loop gap analysis** — check which verification tools the agent ran (`pnpm run check`, `pnpm vitest run`, `pnpm run lint`) and when in the session they were invoked.
+   Flag cases where verification ran only at the end rather than incrementally after each change.
+
 ## Step 3 — Write the retro file
 
 Append (or create) `packages/<PKG>/docs/retro/NNNN-<slug>.md` with this structure.
