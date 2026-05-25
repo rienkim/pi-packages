@@ -33,3 +33,27 @@ Baseline: 53 test files, 848 tests; final: unchanged.
 
 - Pre-existing lint failure in `docs/architecture/architecture.md` (5 unused MD053 link references for issues #164, #165, #170, #171, #172) was fixed as part of the baseline verification and included in the feat commit.
 - The interface landed exactly as planned — no deviations from the plan's Design Overview.
+
+## Stage: Final Retrospective (2026-05-24T20:00:00Z)
+
+### Session summary
+
+All three stages (plan, TDD, ship) completed in a single session.
+Released as `pi-subagents-v7.1.0`.
+No rework, no deviations from plan.
+
+### Observations
+
+#### What went well
+
+- The issue was fully specified — no ambiguity, no `ask_user` needed at any stage.
+- Trivial scope (one interface, no consumers) made the plan-to-ship pipeline fast and mechanical.
+- Pre-existing lint failures in `architecture.md` were caught during baseline verification and fixed without disrupting the flow.
+
+#### What caused friction (agent side)
+
+- None — clean execution with no rework or corrections.
+
+#### What caused friction (user side)
+
+- None — no intervention needed beyond invoking the three workflow commands.
