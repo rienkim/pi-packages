@@ -466,12 +466,10 @@ Bags with 10+ fields are the highest priority for decomposition.
 
 Functions with cyclomatic complexity ≥ 21 (critical threshold):
 
-| Function            | Cyclomatic | Cognitive | File                        | Concern                            |
-| ------------------- | ---------- | --------- | --------------------------- | ---------------------------------- |
-| `showAgentDetail`   | 25         | 33        | `ui/agent-config-editor.ts` | Agent detail/edit view             |
-| `renderWidgetLines` | 25         | 44        | `ui/widget-renderer.ts`     | Renders widget status lines        |
-| `ejectAgent`        | 21         | 20        | `ui/agent-config-editor.ts` | Eject agent to filesystem          |
-| `update`            | 21         | 31        | `ui/agent-widget.ts`        | Widget lifecycle + polling         |
+| Function            | Cyclomatic | Cognitive | File                        | Concern                         |
+| ------------------- | ---------- | --------- | --------------------------- | ------------------------------- |
+| `renderWidgetLines` | 25         | 44        | `ui/widget-renderer.ts`     | Renders widget status lines     |
+| `update`            | 21         | 31        | `ui/agent-widget.ts`        | Widget lifecycle + polling      |
 
 ### Churn hotspots
 
