@@ -217,11 +217,11 @@ describe("SubagentRuntime widget delegation methods", () => {
     expect(stub.markFinished).toHaveBeenCalledWith("agent-42");
   });
 
-  it("updateWidget delegates to widget.update", () => {
+  it("update delegates to widget.update", () => {
     const runtime = createSubagentRuntime();
     const stub = createWidgetStub();
     runtime.widget = stub;
-    runtime.updateWidget();
+    runtime.update();
     expect(stub.update).toHaveBeenCalledOnce();
   });
 
@@ -240,7 +240,7 @@ describe("SubagentRuntime widget delegation methods", () => {
     runtime.setUICtx({ setStatus: vi.fn(), setWidget: vi.fn() });
     runtime.onTurnStart();
     runtime.markFinished("id");
-    runtime.updateWidget();
+    runtime.update();
     runtime.ensureTimer();
   });
 });

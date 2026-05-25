@@ -67,7 +67,7 @@ export default function (pi: ExtensionAPI) {
     (msg, opts) => pi.sendMessage(msg, opts),
     runtime.agentActivity,
     (id) => runtime.markFinished(id),
-    () => runtime.updateWidget(),
+    () => runtime.update(),
   );
 
   // Settings: owns all three in-memory values and handles load/save/emit.
@@ -196,7 +196,7 @@ export default function (pi: ExtensionAPI) {
     widget: {
       setUICtx: (ctx) => runtime.setUICtx(ctx as UICtx),
       ensureTimer: () => runtime.ensureTimer(),
-      update: () => runtime.updateWidget(),
+      update: () => runtime.update(),
       markFinished: (id) => runtime.markFinished(id),
     },
     agentActivity: runtime.agentActivity,

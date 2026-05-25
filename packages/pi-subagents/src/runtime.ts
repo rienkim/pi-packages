@@ -109,7 +109,7 @@ export class SubagentRuntime {
   }
 
   /** Delegate to widget.update — no-op when widget is null. */
-  updateWidget(): void {
+  update(): void {
     this.widget?.update();
   }
 
