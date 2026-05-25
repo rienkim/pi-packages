@@ -40,3 +40,34 @@ All type-check, lint, and dead-code gates pass clean.
 - `AgentManager` structurally satisfies `AgentMenuManager` with no adapter closures — confirmed by `pnpm run check` passing immediately.
 - The `agent-menu.test.ts` refactor replaced `Partial<AgentMenuDeps>` overrides with a `makeHandler(opts)` helper that returns both the handler and collaborator stubs, which is cleaner for assertion.
 - `rumdl` emitted 3 warnings in `pnpm run lint` — these are pre-existing and unrelated to this change (lint passes for markdown linting, the warnings are from biome/eslint steps that auto-fixed nothing).
+
+## Stage: Final Retrospective (2026-05-25T15:04:47Z)
+
+### Session summary
+
+Completed all three stages (planning, TDD, shipping) in one sitting.
+Issue #196 shipped as `pi-subagents-v7.2.5`.
+All closure factories in pi-subagents are now classes; Phase 11 (Layers 3 + 4) is complete.
+
+### Observations
+
+#### What went well
+
+- The three-session lifecycle (plan → TDD → ship) completed cleanly in a single sitting with no user corrections.
+- Structural typing confirmation during planning paid off — `AgentManager` satisfied `AgentMenuManager` without adapter closures, and `pnpm run check` passed immediately after the wiring change.
+- The `makeHandler(opts)` test helper pattern (returning handler + collaborator stubs) was cleaner than the `Partial<AgentMenuDeps>` spread approach it replaced.
+
+#### What caused friction (agent side)
+
+- `wrong-abstraction` — The plan separated factory removal (step 3) from call-site update (step 5), even though the testing skill already has a rule: "When a TDD step changes an interface that has a single call site, the step must include updating that call site."
+  The planner treated this as a testing concern and didn't apply it during plan authoring.
+  Impact: steps 3 and 5 had to be merged at implementation time, producing a commit message explaining the deviation.
+  Added a cross-reference to `plan-issue.md`.
+
+#### What caused friction (user side)
+
+Nothing notable — the user's issue was well-specified and the three `/` commands ran without intervention.
+
+### Changes made
+
+1. Added single-call-site rule to `.pi/prompts/plan-issue.md` TDD Order section: when a step removes a factory/export with one call site, include the call-site update in the same step.

@@ -101,6 +101,7 @@ Then an H1 title (e.g., `# <short descriptive title>`) — required by markdownl
   Each item names the test surface, what's covered, and the suggested commit message (`test:`, `feat:`, `feat!:`, `fix:`, `docs:`).
   When a refactor replaces a type, interface, or function that a large test file depends on, use lift-and-shift: introduce the new thing alongside the old, migrate callers and fixtures incrementally across steps, then remove the old in a final step.
   Never plan a single step that requires rewriting an entire large test file at once.
+  When a step removes a factory or export that has a single call site (e.g., `index.ts`), include the call-site update in the same step — the type checker will not allow them in separate commits.
 - **Risks and Mitigations** — concrete risks and how the plan addresses each.
 - **Open Questions** — defer-until-needed items.
 
