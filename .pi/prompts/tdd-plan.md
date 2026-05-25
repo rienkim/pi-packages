@@ -101,11 +101,13 @@ If the deviation is large, stop and ask.
    Running from a package subdirectory detects fewer entry points than CI, producing false positives that become stale suppressions in CI.
    If it exits non-zero, fix the findings (remove dead exports, add suppressions for false positives).
    Commit fixes as part of the most recent feat commit (amend) if not yet pushed; otherwise as a `fix:` commit.
-5. Cross-check the plan's "Module-Level Changes" table against actually-changed files.
+5. Check for unstaged lockfile changes: `git diff --name-only pnpm-lock.yaml`.
+   If modified, stage and commit it as part of the most recent feat commit (amend if not yet pushed) or as a separate `fix:` commit.
+6. Cross-check the plan's "Module-Level Changes" table against actually-changed files.
    If a listed file was not touched, update it now or note the deviation.
-6. If `packages/<PKG>/docs/architecture/` exists, check whether the changes affect the module structure or data-flow descriptions and update them.
-7. Commit doc updates as `docs: <summary>`.
-8. **Do not edit `CHANGELOG.md`** — release-please owns it and will generate entries from your Conventional Commit messages on the next release.
+7. If `packages/<PKG>/docs/architecture/` exists, check whether the changes affect the module structure or data-flow descriptions and update them.
+8. Commit doc updates as `docs: <summary>`.
+9. **Do not edit `CHANGELOG.md`** — release-please owns it and will generate entries from your Conventional Commit messages on the next release.
 
 ## Summarize
 

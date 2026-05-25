@@ -84,3 +84,4 @@ Run `pnpm run check` (`tsc --noEmit`) for type-only changes.
   Different defaults cause cascading assertion failures during migration steps.
 - When a TDD plan extracts a locally-declared type that shadows an SDK type, verify whether the SDK exports the type before planning around the local copy.
   Dead fallback branches in the local type produce dead test cases and unnecessary complexity.
+- When a TDD step adds test infrastructure to a package that had none (vitest config, tsconfig path aliases, test scripts), run `pnpm run check` immediately after that step to catch config issues before subsequent steps depend on the infrastructure.
