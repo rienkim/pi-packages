@@ -6,7 +6,7 @@ import { type ModelRegistry, resolveModel } from "#src/session/model-resolver";
 import { getModelLabelFromConfig } from "#src/tools/helpers";
 import type { AgentConfig, AgentRecord } from "#src/types";
 import type { AgentActivityTracker } from "#src/ui/agent-activity-tracker";
-import { createAgentConfigEditor } from "#src/ui/agent-config-editor";
+import { AgentConfigEditor } from "#src/ui/agent-config-editor";
 import { createAgentCreationWizard } from "#src/ui/agent-creation-wizard";
 import type { AgentFileOps } from "#src/ui/agent-file-ops";
 import { formatDuration, getDisplayName } from "#src/ui/display";
@@ -64,7 +64,7 @@ export interface MenuUI {
  * Call `handle(ctx)` from the Pi command registration to open the interactive menu.
  */
 export class AgentsMenuHandler {
-  private readonly editor: ReturnType<typeof createAgentConfigEditor>;
+  private readonly editor: AgentConfigEditor;
   private readonly wizard: ReturnType<typeof createAgentCreationWizard>;
 
   constructor(
@@ -76,7 +76,7 @@ export class AgentsMenuHandler {
     private readonly personalAgentsDir: string,
     private readonly projectAgentsDir: string,
   ) {
-    this.editor = createAgentConfigEditor(
+    this.editor = new AgentConfigEditor(
       fileOps,
       registry,
       personalAgentsDir,

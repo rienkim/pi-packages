@@ -61,86 +61,88 @@ export function buildEjectContent(cfg: AgentConfig): string {
   return `---\n${fmFields.join("\n")}\n---\n\n${cfg.systemPrompt}\n`;
 }
 
-// ---- Factory ----
+// ---- Class ----
 
-export function createAgentConfigEditor(
-  fileOps: AgentFileOps,
-  registry: AgentTypeRegistry,
-  personalAgentsDir: string,
-  projectAgentsDir: string,
-) {
-  function agentDirs(): string[] {
-    return [projectAgentsDir, personalAgentsDir];
+export class AgentConfigEditor {
+  constructor(
+    private readonly fileOps: AgentFileOps,
+    private readonly registry: AgentTypeRegistry,
+    private readonly personalAgentsDir: string,
+    private readonly projectAgentsDir: string,
+  ) {}
+
+  private agentDirs(): string[] {
+    return [this.projectAgentsDir, this.personalAgentsDir];
   }
 
-  async function showAgentDetail(ui: MenuUI, name: string) {
-    if (registry.resolveType(name) == null) {
+  async showAgentDetail(ui: MenuUI, name: string): Promise<void> {
+    if (this.registry.resolveType(name) == null) {
       ui.notify(`Agent config not found for "${name}".`, "warning");
       return;
     }
-    const cfg = registry.resolveAgentConfig(name);
-    const file = fileOps.findAgentFile(name, agentDirs());
+    const cfg = this.registry.resolveAgentConfig(name);
+    const file = this.fileOps.findAgentFile(name, this.agentDirs());
 
     const choice = await ui.select(name, buildMenuOptions(cfg, file));
     if (!choice || choice === "Back") return;
 
-    if (choice === "Edit" && file) await handleEdit(ui, name, file);
-    else if (choice === "Delete" && file) await handleDelete(ui, name, file);
+    if (choice === "Edit" && file) await this.handleEdit(ui, name, file);
+    else if (choice === "Delete" && file) await this.handleDelete(ui, name, file);
     else if (choice === "Reset to default" && file)
-      await handleReset(ui, name, file);
-    else if (choice.startsWith("Eject")) await ejectAgent(ui, name, cfg);
-    else if (choice === "Disable") await disableAgent(ui, name);
-    else if (choice === "Enable") await enableAgent(ui, name);
+      await this.handleReset(ui, name, file);
+    else if (choice.startsWith("Eject")) await this.ejectAgent(ui, name, cfg);
+    else if (choice === "Disable") await this.disableAgent(ui, name);
+    else if (choice === "Enable") await this.enableAgent(ui, name);
   }
 
-  async function handleEdit(ui: MenuUI, name: string, file: string) {
-    const content = fileOps.read(file);
+  private async handleEdit(ui: MenuUI, name: string, file: string): Promise<void> {
+    const content = this.fileOps.read(file);
     if (content === undefined) return;
     const edited = await ui.editor(`Edit ${name}`, content);
     if (edited !== undefined && edited !== content) {
-      fileOps.write(file, edited);
-      registry.reload();
+      this.fileOps.write(file, edited);
+      this.registry.reload();
       ui.notify(`Updated ${file}`, "info");
     }
   }
 
-  async function handleDelete(ui: MenuUI, name: string, file: string) {
+  private async handleDelete(ui: MenuUI, name: string, file: string): Promise<void> {
     const confirmed = await ui.confirm(
       "Delete agent",
       `Delete ${name} (${file})?`,
     );
     if (confirmed) {
-      fileOps.remove(file);
-      registry.reload();
+      this.fileOps.remove(file);
+      this.registry.reload();
       ui.notify(`Deleted ${file}`, "info");
     }
   }
 
-  async function handleReset(ui: MenuUI, name: string, file: string) {
+  private async handleReset(ui: MenuUI, name: string, file: string): Promise<void> {
     const confirmed = await ui.confirm(
       "Reset to default",
       `Delete override ${file} and restore embedded default?`,
     );
     if (confirmed) {
-      fileOps.remove(file);
-      registry.reload();
+      this.fileOps.remove(file);
+      this.registry.reload();
       ui.notify(`Restored default ${name}`, "info");
     }
   }
 
-  async function ejectAgent(ui: MenuUI, name: string, cfg: AgentConfig) {
+  private async ejectAgent(ui: MenuUI, name: string, cfg: AgentConfig): Promise<void> {
     const location = await ui.select("Choose location", [
       "Project (.pi/agents/)",
-      `Personal (${personalAgentsDir})`,
+      `Personal (${this.personalAgentsDir})`,
     ]);
     if (!location) return;
 
     const targetDir = location.startsWith("Project")
-      ? projectAgentsDir
-      : personalAgentsDir;
+      ? this.projectAgentsDir
+      : this.personalAgentsDir;
 
     const targetPath = join(targetDir, `${name}.md`);
-    if (fileOps.exists(targetPath)) {
+    if (this.fileOps.exists(targetPath)) {
       const overwrite = await ui.confirm(
         "Overwrite",
         `${targetPath} already exists. Overwrite?`,
@@ -148,23 +150,23 @@ export function createAgentConfigEditor(
       if (!overwrite) return;
     }
 
-    fileOps.write(targetPath, buildEjectContent(cfg));
-    registry.reload();
+    this.fileOps.write(targetPath, buildEjectContent(cfg));
+    this.registry.reload();
     ui.notify(`Ejected ${name} to ${targetPath}`, "info");
   }
 
-  async function disableAgent(ui: MenuUI, name: string) {
-    const file = fileOps.findAgentFile(name, agentDirs());
+  private async disableAgent(ui: MenuUI, name: string): Promise<void> {
+    const file = this.fileOps.findAgentFile(name, this.agentDirs());
     if (file) {
-      const content = fileOps.read(file);
+      const content = this.fileOps.read(file);
       if (content?.includes("\nenabled: false\n")) {
         ui.notify(`${name} is already disabled.`, "info");
         return;
       }
       if (content) {
         const updated = content.replace(/^---\n/, "---\nenabled: false\n");
-        fileOps.write(file, updated);
-        registry.reload();
+        this.fileOps.write(file, updated);
+        this.registry.reload();
         ui.notify(`Disabled ${name} (${file})`, "info");
       }
       return;
@@ -172,40 +174,38 @@ export function createAgentConfigEditor(
 
     const location = await ui.select("Choose location", [
       "Project (.pi/agents/)",
-      `Personal (${personalAgentsDir})`,
+      `Personal (${this.personalAgentsDir})`,
     ]);
     if (!location) return;
 
     const targetDir = location.startsWith("Project")
-      ? projectAgentsDir
-      : personalAgentsDir;
+      ? this.projectAgentsDir
+      : this.personalAgentsDir;
 
     const targetPath = join(targetDir, `${name}.md`);
-    fileOps.write(targetPath, "---\nenabled: false\n---\n");
-    registry.reload();
+    this.fileOps.write(targetPath, "---\nenabled: false\n---\n");
+    this.registry.reload();
     ui.notify(`Disabled ${name} (${targetPath})`, "info");
   }
 
   // eslint-disable-next-line @typescript-eslint/require-await
-  async function enableAgent(ui: MenuUI, name: string) {
-    const file = fileOps.findAgentFile(name, agentDirs());
+  private async enableAgent(ui: MenuUI, name: string): Promise<void> {
+    const file = this.fileOps.findAgentFile(name, this.agentDirs());
     if (!file) return;
 
-    const content = fileOps.read(file);
+    const content = this.fileOps.read(file);
     if (!content) return;
 
     const updated = content.replace(/^(---\n)enabled: false\n/, "$1");
 
     if (updated.trim() === "---\n---" || updated.trim() === "---\n---\n") {
-      fileOps.remove(file);
-      registry.reload();
+      this.fileOps.remove(file);
+      this.registry.reload();
       ui.notify(`Enabled ${name} (removed ${file})`, "info");
     } else {
-      fileOps.write(file, updated);
-      registry.reload();
+      this.fileOps.write(file, updated);
+      this.registry.reload();
       ui.notify(`Enabled ${name} (${file})`, "info");
     }
   }
-
-  return { showAgentDetail };
 }

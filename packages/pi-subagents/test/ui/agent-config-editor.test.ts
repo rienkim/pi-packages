@@ -2,9 +2,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AgentTypeRegistry } from "#src/config/agent-types";
 import type { AgentConfig } from "#src/types";
 import {
+  AgentConfigEditor,
   buildEjectContent,
   buildMenuOptions,
-  createAgentConfigEditor,
 } from "#src/ui/agent-config-editor";
 import { createTestAgentConfig, makeFileOps, makeMenuUI } from "#test/helpers/ui-stubs";
 
@@ -23,7 +23,7 @@ function makeEditor(overrides: {
   const projectAgentsDir = overrides.projectAgentsDir ?? "/project/.pi/agents";
   return {
     fileOps,
-    editor: createAgentConfigEditor(fileOps, testRegistry, personalAgentsDir, projectAgentsDir),
+    editor: new AgentConfigEditor(fileOps, testRegistry, personalAgentsDir, projectAgentsDir),
   };
 }
 
