@@ -218,14 +218,6 @@ export class ConcreteAgentRunner implements AgentRunner {
   }
 }
 
-/**
- * Create an AgentRunner backed by the given IO boundary.
- *
- * @deprecated Use `new ConcreteAgentRunner(io)` directly.
- */
-export function createAgentRunner(io: RunnerIO): AgentRunner {
-  return new ConcreteAgentRunner(io);
-}
 
 // ── Private helpers ───────────────────────────────────────────────────────────
 

@@ -24,7 +24,7 @@ import { AgentTypeRegistry } from "#src/config/agent-types";
 import { loadCustomAgents } from "#src/config/custom-agents";
 import { SessionLifecycleHandler, ToolStartHandler } from "#src/handlers/index";
 import { AgentManager, type AgentManagerObserver } from "#src/lifecycle/agent-manager";
-import { createAgentRunner, type RunnerIO } from "#src/lifecycle/agent-runner";
+import { ConcreteAgentRunner, type RunnerIO } from "#src/lifecycle/agent-runner";
 import { buildParentSnapshot } from "#src/lifecycle/parent-snapshot";
 import { GitWorktreeManager } from "#src/lifecycle/worktree";
 import { buildEventData, type NotificationDetails, NotificationManager } from "#src/observation/notification";
@@ -147,7 +147,7 @@ export default function (pi: ExtensionAPI) {
   };
 
   const manager = new AgentManager({
-    runner: createAgentRunner(runnerIO),
+    runner: new ConcreteAgentRunner(runnerIO),
     worktrees: new GitWorktreeManager(process.cwd()),
     exec: (cmd, args, opts) => pi.exec(cmd, args, opts),
     registry,
