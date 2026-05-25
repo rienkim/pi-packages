@@ -11,7 +11,6 @@ import { subscribeUIObserver } from "#src/ui/ui-observer";
 export interface BackgroundManagerDeps {
   spawn(snapshot: ParentSnapshot, type: string, prompt: string, opts: AgentSpawnConfig): string;
   getRecord(id: string): AgentRecord | undefined;
-  getMaxConcurrent(): number;
 }
 
 /** Narrow widget interface for the background spawner. */
@@ -25,6 +24,7 @@ export interface BackgroundParams {
   config: ResolvedSpawnConfig;
   snapshot: ParentSnapshot;
   parentSession: ParentSessionInfo;
+  settings: { readonly maxConcurrent: number };
 }
 
 /**
@@ -77,7 +77,7 @@ export function spawnBackground(
       `Description: ${execution.description}\n` +
       (record?.outputFile ? `Output file: ${record.outputFile}\n` : "") +
       (isQueued
-        ? `Position: queued (max ${manager.getMaxConcurrent()} concurrent)\n`
+        ? `Position: queued (max ${params.settings.maxConcurrent} concurrent)\n`
         : "") +
       `\nYou will be notified when this agent completes.\n` +
       `Use get_subagent_result to retrieve full results, or steer_subagent to send it messages.\n` +

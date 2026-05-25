@@ -28,7 +28,6 @@ export function createToolDeps(overrides: Partial<AgentToolDeps> = {}): AgentToo
 			spawnAndWait: vi.fn().mockResolvedValue(createTestRecord()),
 			resume: vi.fn().mockResolvedValue(createTestRecord()),
 			getRecord: vi.fn().mockReturnValue(createTestRecord()),
-			getMaxConcurrent: vi.fn().mockReturnValue(4),
 		},
 		widget: {
 			setUICtx: vi.fn(),
@@ -39,7 +38,7 @@ export function createToolDeps(overrides: Partial<AgentToolDeps> = {}): AgentToo
 		agentActivity: new Map<string, AgentActivityTracker>(),
 		registry: defaultRegistry,
 		agentDir: "/home/user/.pi",
-		settings: { defaultMaxTurns: undefined as number | undefined },
+		settings: { defaultMaxTurns: undefined as number | undefined, maxConcurrent: 4 },
 		buildSnapshot: vi.fn((_inheritContext: boolean): ParentSnapshot => STUB_SNAPSHOT),
 		getModelInfo: vi.fn(() => ({ parentModel: { id: "claude-sonnet", name: "Claude Sonnet" }, modelRegistry: { getAll: () => [], getAvailable: () => [] } })),
 		getSessionInfo: vi.fn(() => ({ parentSessionFile: "/sessions/parent.jsonl", parentSessionId: "session-1" })),

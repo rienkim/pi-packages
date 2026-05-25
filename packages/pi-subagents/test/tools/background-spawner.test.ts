@@ -55,6 +55,7 @@ function makeParams(overrides: Partial<BackgroundParams> = {}): BackgroundParams
     config: makeConfig(),
     snapshot: STUB_SNAPSHOT,
     parentSession: { parentSessionFile: "/sessions/parent.jsonl", parentSessionId: "session-1", toolCallId: "tc-1" },
+    settings: { maxConcurrent: 4 },
     ...overrides,
   };
 }
@@ -113,10 +114,9 @@ describe("spawnBackground", () => {
         ...createToolDeps().manager,
         spawn: vi.fn().mockReturnValue("bg-2"),
         getRecord: vi.fn().mockReturnValue(createTestRecord({ status: "queued" })),
-        getMaxConcurrent: vi.fn().mockReturnValue(4),
       },
     });
-    const result = spawnBackground(deps.manager, deps.widget, deps.agentActivity, makeParams());
+    const result = spawnBackground(deps.manager, deps.widget, deps.agentActivity, makeParams({ settings: { maxConcurrent: 4 } }));
     expect(result.content[0].text).toContain("queued");
     expect(result.content[0].text).toContain("max 4 concurrent");
   });
@@ -135,7 +135,6 @@ describe("spawnBackground", () => {
         ...createToolDeps().manager,
         spawn: vi.fn().mockReturnValue("bg-3"),
         getRecord: vi.fn().mockReturnValue(record),
-        getMaxConcurrent: vi.fn().mockReturnValue(4),
       },
     });
     const result = spawnBackground(deps.manager, deps.widget, deps.agentActivity, makeParams());
@@ -148,7 +147,6 @@ describe("spawnBackground", () => {
         ...createToolDeps().manager,
         spawn: vi.fn().mockImplementation(() => { throw new Error("spawn failed"); }),
         getRecord: vi.fn(),
-        getMaxConcurrent: vi.fn().mockReturnValue(4),
       },
     });
     const result = spawnBackground(deps.manager, deps.widget, deps.agentActivity, makeParams());

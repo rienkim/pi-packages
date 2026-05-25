@@ -30,10 +30,7 @@ describe("createToolDeps", () => {
 			expect(record?.status).toBe("completed");
 		});
 
-		it("getMaxConcurrent returns 4", () => {
-			const { manager } = createToolDeps();
-			expect(manager.getMaxConcurrent()).toBe(4);
-		});
+
 	});
 
 	describe("widget defaults", () => {
@@ -65,6 +62,10 @@ describe("createToolDeps", () => {
 			expect(createToolDeps().settings.defaultMaxTurns).toBeUndefined();
 		});
 
+		it("settings.maxConcurrent is 4 by default", () => {
+			expect(createToolDeps().settings.maxConcurrent).toBe(4);
+		});
+
 		it("registry accepts agent type lookups without throwing", () => {
 			const { registry } = createToolDeps();
 			expect(() => registry.resolveAgentConfig("general-purpose")).not.toThrow();
@@ -87,8 +88,9 @@ describe("createToolDeps", () => {
 		});
 
 		it("replaces settings when overridden", () => {
-			const deps = createToolDeps({ settings: { defaultMaxTurns: 10 } });
+			const deps = createToolDeps({ settings: { defaultMaxTurns: 10, maxConcurrent: 2 } });
 			expect(deps.settings.defaultMaxTurns).toBe(10);
+			expect(deps.settings.maxConcurrent).toBe(2);
 		});
 	});
 
@@ -98,7 +100,6 @@ describe("createToolDeps", () => {
 			const bgManager: BackgroundManagerDeps = manager;
 			expect(bgManager.spawn).toBeTypeOf("function");
 			expect(bgManager.getRecord).toBeTypeOf("function");
-			expect(bgManager.getMaxConcurrent).toBeTypeOf("function");
 		});
 
 		it("widget satisfies BackgroundWidgetDeps structurally", () => {

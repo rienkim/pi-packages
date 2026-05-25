@@ -23,7 +23,6 @@ export interface AgentToolManager {
   spawnAndWait: (snapshot: ParentSnapshot, type: string, prompt: string, opts: Omit<AgentSpawnConfig, "isBackground">) => Promise<AgentRecord>;
   resume: (id: string, prompt: string, signal: AbortSignal) => Promise<AgentRecord | undefined>;
   getRecord: (id: string) => AgentRecord | undefined;
-  getMaxConcurrent: () => number;
 }
 
 /** Narrow widget interface — only the methods the Agent tool calls. */
@@ -50,8 +49,8 @@ export interface AgentToolDeps {
   agentActivity: AgentActivityAccess;
   registry: AgentTypeRegistry;
   agentDir: string;
-  /** Narrow settings accessor — only the default max turns is needed here. */
-  settings: { readonly defaultMaxTurns: number | undefined };
+  /** Narrow settings accessor — only the fields the Agent tool reads. */
+  settings: { readonly defaultMaxTurns: number | undefined; readonly maxConcurrent: number };
   /** Build a ParentSnapshot from the current session context. */
   buildSnapshot: (inheritContext: boolean) => ParentSnapshot;
   /** Model info from the current session context. */
@@ -252,7 +251,7 @@ Guidelines:
           manager,
           widget,
           agentActivity,
-          { config, snapshot, parentSession },
+          { config, snapshot, parentSession, settings },
         );
       }
 
