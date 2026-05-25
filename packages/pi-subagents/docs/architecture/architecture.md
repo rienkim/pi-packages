@@ -615,8 +615,8 @@ The approach is layered: each step makes the next step trivial.
 | Dead exports              | 1 (`getToolCallName` re-export)         |
 | Production duplication    | 0                                       |
 | Test duplication          | 1,396 lines (69 clone groups, 22 files) |
-| `as any` casts in index   | 5                                       |
-| Adapter closures in index | 44                                      |
+| `as any` casts in index   | 1 (down from 5; Layer 1 resolved 4)     |
+| Adapter closures in index | 41 (down from 44; Layer 1 resolved 3)   |
 | Index fan-out             | 25 imports                              |
 
 ### Root cause
@@ -624,8 +624,10 @@ The approach is layered: each step makes the next step trivial.
 The 44 adapter closures in `index.ts` exist because the tool factories accept narrow interfaces that don't structurally match the real objects.
 The real objects can't satisfy the interfaces because:
 
-1. `SubagentRuntime.currentCtx` is typed `{ pi: unknown; ctx: unknown }` — so every consumer must `as any` cast to read fields.
-2. Context queries (`buildSnapshot`, `getModelInfo`, `getSessionInfo`) live as closures in index.ts instead of methods on the state holder.
+1. ~~`SubagentRuntime.currentCtx` is typed `{ pi: unknown; ctx: unknown }` — so every consumer must `as any` cast to read fields.~~
+   Resolved by Layer 0 (#192) + Layer 1 (#193).
+2. ~~Context queries (`buildSnapshot`, `getModelInfo`, `getSessionInfo`) live as closures in index.ts instead of methods on the state holder.~~
+   Resolved by Layer 1 (#193).
 3. `AgentToolManager` mixes fields from `AgentManager` and `SettingsManager` (source mismatch).
 4. `AgentToolWidget` uses different method names than `SubagentRuntime` (name mismatch).
 
@@ -655,13 +657,13 @@ export interface SessionContext {
 - Smell: Category C (platform type threading)
 - Outcome: typed foundation for Layers 1–4; no `as any` needed by consumers of `SubagentRuntime`
 
-### Layer 1: `SubagentRuntime` stores typed context, owns its queries ([#193][193])
+### Layer 1: `SubagentRuntime` stores typed context, owns its queries ([#193][193]) ✓ done
 
 Change `currentCtx` from `{ pi: unknown; ctx: unknown }` to `SessionContext | undefined`.
 The single `as SessionContext` cast moves into `handleSessionStart` — the boundary where the SDK hands us the value.
 Add typed methods: `buildSnapshot(inheritContext)`, `getModelInfo()`, `getSessionInfo()`.
 
-- Target: `src/runtime.ts`, `src/handlers/lifecycle.ts`
+- Target: `src/runtime.ts`, `src/handlers/lifecycle.ts`, `src/service/service-adapter.ts`, `src/index.ts`
 - Smell: Category C (closure queries on mutable field → methods on state owner)
 - Outcome: 3 closure queries in index.ts → 0; `SubagentRuntime` is self-sufficient for tool deps
 - Enables: Layer 3 (tools accept `SubagentRuntime` directly)
