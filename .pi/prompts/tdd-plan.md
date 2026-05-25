@@ -97,11 +97,14 @@ If the deviation is large, stop and ask.
    Fix all failures — including pre-existing ones unrelated to the current change.
    Commit any fixup as part of the most recent feat commit (amend) only if you haven't pushed; otherwise as a `style:` commit.
    The fixup must NOT land in a `docs:` commit.
-4. Cross-check the plan's "Module-Level Changes" table against actually-changed files.
+4. Run the fallow dead-code gate: `pnpm fallow dead-code`.
+   If it exits non-zero, fix the findings (remove dead exports, add suppressions for false positives).
+   Commit fixes as part of the most recent feat commit (amend) if not yet pushed; otherwise as a `fix:` commit.
+5. Cross-check the plan's "Module-Level Changes" table against actually-changed files.
    If a listed file was not touched, update it now or note the deviation.
-5. If `packages/<PKG>/docs/architecture/` exists, check whether the changes affect the module structure or data-flow descriptions and update them.
-6. Commit doc updates as `docs: <summary>`.
-7. **Do not edit `CHANGELOG.md`** — release-please owns it and will generate entries from your Conventional Commit messages on the next release.
+6. If `packages/<PKG>/docs/architecture/` exists, check whether the changes affect the module structure or data-flow descriptions and update them.
+7. Commit doc updates as `docs: <summary>`.
+8. **Do not edit `CHANGELOG.md`** — release-please owns it and will generate entries from your Conventional Commit messages on the next release.
 
 ## Summarize
 
