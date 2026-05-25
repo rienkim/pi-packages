@@ -1406,7 +1406,7 @@ describe("createAutoformatExtension", () => {
 
     expect(pi.sentMessages).toHaveLength(1);
     const content = pi.sentMessages[0].message.content as string;
-    expect(content).toContain("[autoformat] Formatted 1 file(s)");
+    expect(content).toContain("[pi-autoformat] Formatted 1 file(s)");
     expect(content).toContain("/repo/src/foo.ts");
   });
 
@@ -1626,7 +1626,7 @@ describe("buildSteeringMessageContent", () => {
         },
       ],
     });
-    expect(result).toContain("[autoformat] Formatted 1 file(s)");
+    expect(result).toContain("[pi-autoformat] Formatted 1 file(s)");
     expect(result).toContain("/repo/src/foo.ts");
   });
 
@@ -1733,7 +1733,7 @@ describe("buildSteeringMessageContent", () => {
         },
       ],
     });
-    expect(result).toContain("[autoformat] Formatted 1 file(s)");
+    expect(result).toContain("[pi-autoformat] Formatted 1 file(s)");
     expect(result).toContain("/repo/ok.ts");
     expect(result).toContain("Failures:");
     expect(result).toContain("prettier (exit 2)");
