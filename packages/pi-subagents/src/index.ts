@@ -25,7 +25,7 @@ import { AgentTypeRegistry } from "#src/config/agent-types";
 import { loadCustomAgents } from "#src/config/custom-agents";
 import { SessionLifecycleHandler, ToolStartHandler } from "#src/handlers/index";
 import { AgentManager, type AgentManagerObserver } from "#src/lifecycle/agent-manager";
-import { createAgentRunner, getAgentConversation, type RunnerIO } from "#src/lifecycle/agent-runner";
+import { createAgentRunner, type RunnerIO } from "#src/lifecycle/agent-runner";
 import { buildParentSnapshot } from "#src/lifecycle/parent-snapshot";
 import { GitWorktreeManager } from "#src/lifecycle/worktree";
 import { buildEventData, type NotificationDetails, NotificationManager } from "#src/observation/notification";
@@ -41,7 +41,7 @@ import { deriveSubagentSessionDir } from "#src/session/session-dir";
 import { preloadSkills } from "#src/session/skill-loader";
 import { SettingsManager } from "#src/settings";
 import { createAgentTool } from "#src/tools/agent-tool";
-import { createGetResultTool } from "#src/tools/get-result-tool";
+import { GetResultTool } from "#src/tools/get-result-tool";
 import { getModelLabelFromConfig } from "#src/tools/helpers";
 import { SteerTool } from "#src/tools/steer-tool";
 import { FsAgentFileOps } from "#src/ui/agent-file-ops";
@@ -209,12 +209,7 @@ export default function (pi: ExtensionAPI) {
 
   // ---- get_subagent_result tool ----
 
-  pi.registerTool(defineTool(createGetResultTool(
-    (id) => manager.getRecord(id),
-    (key) => notifications.cancelNudge(key),
-    (session) => getAgentConversation(session),
-    registry,
-  )));
+  pi.registerTool(new GetResultTool(manager, notifications, registry).toToolDefinition());
 
   // ---- steer_subagent tool ----
 
