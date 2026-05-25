@@ -36,14 +36,17 @@
   },
   "scripts": {
     "check": "tsc --noEmit",
-    "lint": "biome check . && eslint ."
+    "lint": "biome check . && eslint .",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "devDependencies": {
     "@biomejs/biome": "catalog:",
     "@earendil-works/pi-ai": "0.75.4",
     "@earendil-works/pi-coding-agent": "0.75.4",
     "@types/node": "catalog:",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "vitest": "catalog:"
   },
   "peerDependencies": {
     "@earendil-works/pi-ai": ">=0.75.0",
