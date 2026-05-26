@@ -294,6 +294,7 @@ src/
 │   ├── message-formatters.ts       pure per-message-type formatters (extracted from conversation-viewer)
 │   ├── agent-activity-tracker.ts   live activity state tracker
 │   ├── agent-file-ops.ts           filesystem abstraction
+│   ├── agent-file-writer.ts        overwrite-guard + write + reload + notify helper
 │   ├── ui-observer.ts              session-event observer for streaming
 │   └── display.ts                  pure formatters and shared types
 │
@@ -491,7 +492,7 @@ Once structural work stabilizes, these are expected to cool.
 ### Production duplication
 
 The prior clone group between `agent-runner.ts` and `message-formatters.ts` was resolved in #172.
-One 20-line clone group remains between `agent-config-editor.ts:138–151` and `agent-creation-wizard.ts:231–250` — both implement the same overwrite-guard + write + reload + notify pattern.
+The 20-line clone group between `agent-config-editor.ts` and `agent-creation-wizard.ts` was resolved in #217 — extracted into `ui/agent-file-writer.ts` (`writeAgentFile`). 0 production clone groups remain.
 
 ### Proposed bag decompositions
 
