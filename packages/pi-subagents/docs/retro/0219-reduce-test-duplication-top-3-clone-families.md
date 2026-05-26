@@ -18,3 +18,19 @@ Produced a 5-step TDD plan with shared `manager-stubs.ts` helper for runner/work
 - The conversation-viewer and config-editor duplication is more localized — inline factories within each test file are the right granularity to avoid over-extraction.
 - Gated runners (using `Promise.withResolvers`) were deliberately kept inline since they encode test-specific flow control that a factory would obscure.
 - Both dependencies (#214, #216) are closed, so the production code is stable and the tests won't shift under us during implementation.
+
+## Stage: Implementation — TDD (2026-05-26T17:42:41Z)
+
+### Session summary
+
+Completed all 4 TDD cycles: created `test/helpers/manager-stubs.ts` + `manager-stubs.test.ts` (13 smoke tests), migrated `agent-manager.test.ts`, `conversation-viewer.test.ts`, and `agent-config-editor.test.ts`.
+Test count delta: 970 → 983 (+13 from smoke tests).
+All 4 commits landed cleanly; full suite green at every step.
+
+### Observations
+
+- Target file line savings: `agent-manager.test.ts` −63, `conversation-viewer.test.ts` −58, `agent-config-editor.test.ts` −16; offset by +211 for the new helper files.
+  Net LOC is positive, but the _clone_ lines fallow detects are eliminated — the metric the issue targets.
+- The `createSessionRunner` + `createRunResult` chain required careful identity-check verification: `createRunResult(sess)` calls `toAgentSession(sess)` which casts without creating a new object, so `toBe(session)` assertions in the execution-state tests still pass. ✓
+- ESLint auto-fixed two cosmetic issues on commit (`activity = undefined` → `activity` destructuring, `session as unknown` cast removal) — caught by pre-commit hooks, not a problem in practice.
+- The `assertRenderFitsWidths` helper in `conversation-viewer.test.ts` reduced the 10 render-safety tests from ~8 lines each to 1–4 lines each; the `setupDetail` helper in `agent-config-editor.test.ts` eliminated 3 repeated setup lines per test across 18 `showAgentDetail` tests.
