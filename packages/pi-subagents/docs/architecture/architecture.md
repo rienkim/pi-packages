@@ -652,20 +652,23 @@ Extract per-entry-type formatters: `formatMessageEntry(entry)` and `formatCompac
 - Smell: B (oversized function)
 - Outcome: cognitive complexity < 10, function < 15 LOC
 
-### Step 3: Decompose `startAgent` in `agent-manager.ts` — [#216]
+### Step 3: Decompose `startAgent` in `agent-manager.ts` — [#216] ✓
 
-`startAgent` is a ~130-line private method that chains worktree setup → state transitions → observer notification → abort-signal wiring → runner invocation → `.then()` completion handler (~35 lines) → `.catch()` error handler (~15 lines).
-Both the `.then()` and `.catch()` blocks share common finalization logic (background counter decrement, observer notification, queue drain, worktree cleanup, detach signal).
+`startAgent` had two mutable closure variables (`unsubRecordObserver`, `detachParentSignal`) shared across three callbacks with duplicated finalization logic in `.then()`/`.catch()`.
+The fix introduced a `RunHandle` lifecycle object (private to `agent-manager.ts`) that owns the per-run cleanup state and exposes `complete()`/`fail()` as Tell-Don't-Ask methods.
+`WorktreeState` gained `performCleanup(worktrees, description)` to eliminate the ask-tell dance at cleanup sites.
 
-Extract:
+Extracted:
 
-1. `handleRunCompletion(record, options, result)` — worktree cleanup, state transition, execution update, observer notification.
-2. `handleRunError(record, options, err)` — error marking, worktree cleanup.
-3. `finalizeBackgroundRun(record)` — shared `runningBackground--`, observer, `drainQueue()`.
+1. `RunHandle` class — owns `unsub`/`detachFn`, `wireSignal()`, `attachObserver()`, `complete()`, `fail()`, idempotent `fireOnFinished()`.
+2. `finalizeBackgroundRun(record)` — shared `runningBackground--`, crash-safe observer notification, `drainQueue()`.
+3. `setupWorktree(id, record, isolation)` — worktree creation with strict failure.
+4. `flushPendingSteers(id, session)` — drain buffered steers on session creation.
+5. `WorktreeState.performCleanup(worktrees, description)` — self-cleanup eliminating ask-tell.
 
-- Target: `src/lifecycle/agent-manager.ts`
+- Target: `src/lifecycle/agent-manager.ts`, `src/lifecycle/worktree-state.ts`
 - Smell: B (oversized method) + A (duplicated finalization logic in then/catch)
-- Outcome: no method > 40 LOC, `agent-manager.ts` < 480 LOC
+- Outcome: `startAgent` reduced to ~40 LOC coordinator with zero mutable `let` bindings; `.then()`/`.catch()` are one-liners
 
 ### Step 4: Extract overwrite guard from UI — [#217]
 
