@@ -57,7 +57,7 @@ Refactoring history is preserved in `docs/architecture/history/` (one file per c
 
 ### Domain organization
 
-The extension is organized into six domains (53 files, 8,218 LOC):
+The extension is organized into six domains (56 files, 8,382 LOC):
 
 | Domain      | Directory                                                                                                                                            | Modules | Responsibility                                                                                       |
 | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ------- | ---------------------------------------------------------------------------------------------------- |

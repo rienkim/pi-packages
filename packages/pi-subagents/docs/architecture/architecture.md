@@ -222,7 +222,7 @@ sequenceDiagram
 
 ## Module organization
 
-The extension has 53 source files organized into six domains plus entry-point wiring.
+The extension has 56 source files organized into six domains plus entry-point wiring.
 All eight domains have directories: `config/`, `session/`, `lifecycle/`, `observation/`, `service/`, `tools/`, `ui/`, and `handlers/`.
 Issue #164 moved the 26 previously flat root-level files into five new domain directories, reducing the root to 5 files + 8 directories.
 
@@ -260,6 +260,7 @@ src/
 │   ├── parent-snapshot.ts          immutable spawn-time parent state
 │   ├── execution-state.ts          session/output phase state
 │   ├── permission-bridge.ts        optional bridge to pi-permission-system registry
+│   ├── run-handle.ts               per-run cleanup lifecycle
 │   ├── worktree.ts                 git worktree isolation
 │   ├── worktree-state.ts           worktree phase state
 │   └── usage.ts                    token usage tracking
@@ -272,7 +273,7 @@ src/
 │
 ├── service/                        cross-extension API boundary
 │   ├── service.ts                  SubagentsService interface + Symbol.for() accessors
-│   └── service-adapter.ts          SubagentsService wrapper around AgentManager
+│   └── service-adapter.ts          SubagentsServiceAdapter class wrapping AgentManager
 │
 ├── tools/                          LLM-facing tool implementations
 │   ├── agent-tool.ts               Agent tool definition, validation, dispatch
@@ -288,8 +289,8 @@ src/
 │   ├── agent-widget.ts             above-editor live status widget
 │   ├── widget-renderer.ts          pure rendering for widget
 │   ├── agent-menu.ts               /agents slash command menu
-│   ├── agent-config-editor.ts      agent detail/edit view
-│   ├── agent-creation-wizard.ts    agent creation (AI + manual)
+│   ├── agent-config-editor.ts      agent detail/edit view (AgentConfigEditor class)
+│   ├── agent-creation-wizard.ts    agent creation (AgentCreationWizard class)
 │   ├── conversation-viewer.ts      scrollable session overlay
 │   ├── message-formatters.ts       pure per-message-type formatters (extracted from conversation-viewer)
 │   ├── agent-activity-tracker.ts   live activity state tracker
@@ -434,18 +435,17 @@ These are fire-and-forget broadcast events — no request IDs, no reply channels
 
 ### Health metrics
 
-| Metric                     | Value                                |
-| -------------------------- | ------------------------------------ |
-| Health score               | 78/100 (B)                           |
-| Total LOC                  | 8,180 (53 files)                     |
-| Test LOC                   | 12,026                               |
-| Dead code                  | 0 files, 0 exports                   |
-| Maintainability index      | 90.7 (good)                          |
-| Avg cyclomatic complexity  | 1.5                                  |
-| P90 cyclomatic complexity  | 2                                    |
-| Production duplication     | 20 lines (1 clone group)             |
-| Test duplication           | 59 clone groups, 1,046 lines         |
-| Fallow refactoring targets | 1 (buildParentContext, cognitive 30) |
+| Metric                     | Value                             |
+| -------------------------- | --------------------------------- |
+| Health score               | 78/100 (B)                        |
+| Total LOC                  | 8,382 (56 files)                  |
+| Dead code                  | 0 files, 0 exports                |
+| Maintainability index      | 90.8 (good)                       |
+| Avg cyclomatic complexity  | 1.4                               |
+| P90 cyclomatic complexity  | 2                                 |
+| Production duplication     | 11 lines (1 internal clone group) |
+| Test duplication           | 38 clone groups, 634 lines        |
+| Fallow refactoring targets | 0                                 |
 
 ### Dependency bag inventory
 
@@ -471,28 +471,29 @@ Bags with 10+ fields are the highest priority for decomposition.
 
 Functions with cyclomatic complexity ≥ 21 (critical threshold):
 
-No functions remain above the critical threshold — all hotspots resolved in Phase 12.
+No functions remain above the critical threshold — all hotspots resolved in Phase 12. 6 functions remain at HIGH severity (CRAP ≥ 65); 13 at moderate.
 
 ### Churn hotspots
 
-Files with highest commit frequency × complexity (accelerating trend):
+Files with highest commit frequency × complexity:
 
 | Score | File                        | Commits | Trend          |
 | ----- | --------------------------- | ------- | -------------- |
-| 43.3  | `index.ts`                  | 81      | ▲ accelerating |
-| 26.0  | `ui/agent-menu.ts`          | 33      | ▲ accelerating |
-| 13.6  | `tools/agent-tool.ts`       | 41      | ▲ accelerating |
-| 13.3  | `ui/conversation-viewer.ts` | 16      | ▲ accelerating |
-| 12.6  | `ui/agent-config-editor.ts` | 10      | ▼ cooling      |
-| 11.7  | `ui/agent-widget.ts`        | 14      | ▲ accelerating |
+| 65.0  | `index.ts`                  | 128     | ▲ accelerating |
+| 9.1   | `ui/agent-widget.ts`        | 13      | ▼ cooling      |
+| 8.4   | `ui/conversation-viewer.ts` | 11      | ─ stable       |
+| 6.4   | `runtime.ts`                | 12      | ─ stable       |
+| 3.3   | `settings.ts`               | 4       | ─ stable       |
+| 2.9   | `handlers/lifecycle.ts`     | 11      | ─ stable       |
 
-Note: accelerating trends reflect recent refactoring phases, not feature churn.
-Once structural work stabilizes, these are expected to cool.
+Most files have cooled to stable after 13 phases of structural work.
+`index.ts` remains the sole accelerating hotspot — expected as the wiring entry point for each refactoring phase.
 
 ### Production duplication
 
 The prior clone group between `agent-runner.ts` and `message-formatters.ts` was resolved in #172.
-The 20-line clone group between `agent-config-editor.ts` and `agent-creation-wizard.ts` was resolved in #217 — extracted into `ui/agent-file-writer.ts` (`writeAgentFile`). 0 production clone groups remain.
+The 20-line clone group between `agent-config-editor.ts` and `agent-creation-wizard.ts` was resolved in #217 — extracted into `ui/agent-file-writer.ts` (`writeAgentFile`).
+One 11-line internal clone group remains within `agent-config-editor.ts` (lines 135–145 / 173–183).
 
 ### Proposed bag decompositions
 
@@ -619,119 +620,11 @@ See [phase-11-closure-to-class.md](history/phase-11-closure-to-class.md) for det
 Phase 12 decomposed the three remaining high-complexity UI functions and extracted shared test fixtures.
 All four steps are closed: [#205], [#206], [#207], [#208].
 
-## Improvement roadmap (Phase 13)
+## Phase 13 (complete)
 
-Phase 13 addresses the remaining fallow refactoring target, `agent-manager.ts` oversized method, production duplication, SDK boundary coupling, and the heaviest test clone families.
-Health score target: 80+ (A).
-
-### Findings summary
-
-| Finding                                                          | Category       | Impact | Risk | Priority |
-| ---------------------------------------------------------------- | -------------- | ------ | ---- | -------- |
-| 3 remaining closure factories (Phase 11 survivors)               | C: Coupling    | 4      | 2    | 16       |
-| `buildParentContext` cognitive 30 (only fallow target)           | B: Oversized   | 3      | 1    | 15       |
-| `startAgent` in agent-manager.ts (~130 LOC method)               | B: Oversized   | 4      | 3    | 12       |
-| Test duplication: 59 clone groups, 1,046 lines                   | D: Testability | 3      | 2    | 12       |
-| Overwrite guard duplicated across UI modules (20 lines)          | A: Redundant   | 2      | 1    | 10       |
-| `settings.ts` calls SDK function `getAgentDir()` at module level | C: Coupling    | 2      | 1    | 10       |
-
-### Step 1: Convert remaining closure factories to classes — [#214] ✓
-
-Three closure factories converted to classes in [#214].
-
-| Factory → Class                                        | File                          | Captures                                 |
-| ------------------------------------------------------ | ----------------------------- | ---------------------------------------- |
-| `createAgentConfigEditor()` → `AgentConfigEditor`      | `ui/agent-config-editor.ts`   | `fileOps`, `registry`, 2 dirs            |
-| `createAgentCreationWizard()` → `AgentCreationWizard`  | `ui/agent-creation-wizard.ts` | `fileOps`, `manager`, `registry`, 2 dirs |
-| `createSubagentsService()` → `SubagentsServiceAdapter` | `service/service-adapter.ts`  | `manager`, `resolveModel`, `runtime`     |
-
-- Smell: C (coupling — deps hidden in closure scope instead of explicit on class)
-- Outcome: 0 remaining closure factories (excluding pure-function factories), deps visible as constructor parameters
-
-### Step 2: Decompose `buildParentContext` (cognitive 30) — [#215] ✓
-
-`buildParentContext` in `session/context.ts` is the only remaining fallow refactoring target.
-The function loops over branch entries with 3 type-check branches, each with sub-branches for role or summary.
-Extract per-entry-type formatters: `formatMessageEntry(entry)` and `formatCompactionEntry(entry)`.
-
-- Target: `src/session/context.ts`
-- Smell: B (oversized function)
-- Outcome: cognitive complexity < 10, function < 15 LOC
-
-### Step 3: Decompose `startAgent` in `agent-manager.ts` — [#216] ✓
-
-`startAgent` had two mutable closure variables (`unsubRecordObserver`, `detachParentSignal`) shared across three callbacks with duplicated finalization logic in `.then()`/`.catch()`.
-The fix introduced a `RunHandle` lifecycle object (private to `agent-manager.ts`) that owns the per-run cleanup state and exposes `complete()`/`fail()` as Tell-Don't-Ask methods.
-`WorktreeState` gained `performCleanup(worktrees, description)` to eliminate the ask-tell dance at cleanup sites.
-
-Extracted:
-
-1. `RunHandle` class — owns `unsub`/`detachFn`, `wireSignal()`, `attachObserver()`, `complete()`, `fail()`, idempotent `fireOnFinished()`.
-2. `finalizeBackgroundRun(record)` — shared `runningBackground--`, crash-safe observer notification, `drainQueue()`.
-3. `setupWorktree(id, record, isolation)` — worktree creation with strict failure.
-4. `flushPendingSteers(id, session)` — drain buffered steers on session creation.
-5. `WorktreeState.performCleanup(worktrees, description)` — self-cleanup eliminating ask-tell.
-
-- Target: `src/lifecycle/agent-manager.ts`, `src/lifecycle/worktree-state.ts`
-- Smell: B (oversized method) + A (duplicated finalization logic in then/catch)
-- Outcome: `startAgent` reduced to ~40 LOC coordinator with zero mutable `let` bindings; `.then()`/`.catch()` are one-liners
-
-### Step 4: Extract overwrite guard from UI — [#217] ✓
-
-The 20-line pattern duplicated between `agent-config-editor.ts:138–151` and `agent-creation-wizard.ts:231–250` checks file existence, prompts for confirmation, writes the file, reloads the registry, and notifies the user.
-Extract a shared `writeAgentFile(fileOps, ui, registry, targetPath, content, label)` function.
-
-- Target: new `src/ui/agent-file-writer.ts`, consumers `src/ui/agent-config-editor.ts` and `src/ui/agent-creation-wizard.ts`
-- Smell: A (production duplication)
-- Outcome: 0 production clone groups
-
-### Step 5: Push SDK boundary in `settings.ts` — [#218] ✓
-
-`globalPath()` calls `getAgentDir()` (a Pi SDK function) at invocation time.
-This hides a platform dependency inside a module that is otherwise pure configuration logic.
-Inject `agentDir: string` as a constructor parameter to `SettingsManager` and pass the global settings path from the boundary in `index.ts`.
-
-- Target: `src/settings.ts`, `src/index.ts`
-- Smell: C (platform type threading)
-- Outcome: `settings.ts` has 0 Pi SDK imports, `loadSettings`/`saveSettings` become fully testable without SDK stubs
-
-### Step 6: Reduce test duplication — top 3 clone families — [#219]
-
-The three heaviest remaining clone families after Phase 12:
-
-1. `agent-manager.test.ts` — 16 clone groups, 160 duplicated lines.
-   Extract shared setup/assertion helpers into `test/helpers/manager-stubs.ts`.
-2. `conversation-viewer.test.ts` — 8 clone groups, 91 duplicated lines.
-   Extract entry-builder helpers into existing `test/helpers/` or inline factory.
-3. `agent-config-editor.test.ts` — 5 clone groups, 42 duplicated lines.
-   Extract shared setup helpers.
-
-- Target: `test/lifecycle/agent-manager.test.ts`, `test/conversation-viewer.test.ts`, `test/ui/agent-config-editor.test.ts`
-- Smell: D (test duplication)
-- Outcome: test duplication reduced by ~200 lines (from 1,046 to < 850)
-
-### Step dependency diagram
-
-```mermaid
-flowchart LR
-    S1["Step 1\nclosure to class"]
-    S2["Step 2\nbuildParentContext"]
-    S3["Step 3\nstartAgent decomp"]
-    S4["Step 4\noverwrite guard"]
-    S5["Step 5\nsettings SDK"]
-    S6["Step 6\ntest duplication"]
-
-    S1 --> S4
-    S1 --> S6
-    S3 --> S6
-    S2 ~~~ S5
-```
-
-### Tracks
-
-1. **Track A — Structural** (Steps 1, 3): closure-to-class conversions and method decomposition.
-2. **Track B — Complexity and coupling** (Steps 2, 5): independent, can proceed in parallel with Track A.
-3. **Track C — Duplication** (Steps 4, 6): Step 4 depends on Step 1 (overwrite guard lives in files being converted); Step 6 depends on Steps 1 and 3 (production code they test changes first).
+Phase 13 addressed remaining closure factories, the last fallow refactoring target, oversized methods, production duplication, SDK boundary coupling, and test clone families.
+All six steps are closed: [#214], [#215], [#216], [#217], [#218], [#219].
+See [phase-13-remaining-smells.md](history/phase-13-remaining-smells.md) for details.
 
 ## Improvement roadmap (Phase 14)
 
@@ -859,6 +752,7 @@ Detailed records are preserved in per-phase history files:
 | 10    | Domain organization, bag decomposition, complexity  | Complete | [phase-10-structural-decomposition.md](history/phase-10-structural-decomposition.md) |
 | 11    | Closure factories to classes                        | Complete | [phase-11-closure-to-class.md](history/phase-11-closure-to-class.md)                 |
 | 12    | Complexity reduction and test fixture extraction    | Complete | [phase-12-complexity-test-fixtures.md](history/phase-12-complexity-test-fixtures.md) |
+| 13    | Remaining structural smells                         | Complete | [phase-13-remaining-smells.md](history/phase-13-remaining-smells.md)                 |
 
 ### Structural refactoring issues
 
