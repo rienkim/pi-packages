@@ -10,6 +10,7 @@ import { join } from "node:path";
 import type { AgentTypeRegistry } from "#src/config/agent-types";
 import type { AgentConfig } from "#src/types";
 import type { AgentFileOps } from "#src/ui/agent-file-ops";
+import { writeAgentFile } from "#src/ui/agent-file-writer";
 import type { MenuUI } from "#src/ui/agent-menu";
 
 // ---- Pure helpers ----
@@ -142,17 +143,14 @@ export class AgentConfigEditor {
       : this.personalAgentsDir;
 
     const targetPath = join(targetDir, `${name}.md`);
-    if (this.fileOps.exists(targetPath)) {
-      const overwrite = await ui.confirm(
-        "Overwrite",
-        `${targetPath} already exists. Overwrite?`,
-      );
-      if (!overwrite) return;
-    }
-
-    this.fileOps.write(targetPath, buildEjectContent(cfg));
-    this.registry.reload();
-    ui.notify(`Ejected ${name} to ${targetPath}`, "info");
+    await writeAgentFile(
+      this.fileOps,
+      ui,
+      this.registry,
+      targetPath,
+      buildEjectContent(cfg),
+      `Ejected ${name} to`,
+    );
   }
 
   private async disableAgent(ui: MenuUI, name: string): Promise<void> {
