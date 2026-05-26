@@ -34,3 +34,30 @@ Test count: 962 → 970 (+8 new tests in `test/ui/agent-file-writer.test.ts`).
 - Both consumer refactors were straightforward one-import-add + one-block-replace edits; all existing tests passed without modification, confirming the extraction preserved exact behavior.
 - The notification label `"Ejected ${name} to"` (with trailing space absorbed by `${targetPath}`) matched the pre-existing message format `"Ejected test-agent to /path"` exactly — no test assertions changed.
 - `FileWriter`, `WriterUI`, and `Reloadable` narrow interfaces are exported from `agent-file-writer.ts`; both consumer files import the concrete types from their original sources, satisfying TypeScript's structural checker without any casts.
+
+## Stage: Final Retrospective (2026-05-26T21:00:00Z)
+
+### Session summary
+
+Full plan → TDD → ship → release lifecycle completed in a single continuous session.
+Released as `pi-subagents-v7.7.0`.
+Zero rework, zero test failures, zero CI issues.
+
+### Observations
+
+#### What went well
+
+- The Phase 13 roadmap's step-level issue decomposition produced an issue (#217) that was right-sized for fully autonomous execution — the entire lifecycle completed without any blocking questions or scope surprises.
+- ISP-narrow interfaces (`FileWriter`, `WriterUI`, `Reloadable`) structurally satisfied both consumer types without casts, confirming the plan's design.
+- Existing tests in both consumer files passed without modification after the refactors, validating that the extraction preserved exact behavior.
+
+#### What caused friction (agent side)
+
+- `wrong-abstraction` — The plan split TDD steps 1 (happy-path tests) and 2 (overwrite-guard tests) for a ~10-line function with a single conditional.
+  Writing all 8 tests at once and implementing the full function body in one pass was natural; splitting them would have been artificial.
+  Self-corrected by folding into one commit.
+  Impact: added friction but no rework — the plan said "implementation should already pass" for step 2, acknowledging the fold was expected.
+
+#### What caused friction (user side)
+
+- Nothing notable — the issue was well-scoped with clear target files, a concrete smell label, and an explicit dependency chain.
