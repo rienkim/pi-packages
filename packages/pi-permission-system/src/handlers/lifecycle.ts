@@ -22,7 +22,6 @@ interface ResourcesDiscoverPayload {
  */
 export class SessionLifecycleHandler {
   constructor(
-    // biome-ignore lint/correctness/noUnusedPrivateClassMembers: accessed via destructuring (const { session } = this)
     private readonly session: PermissionSession,
     private readonly cleanupRpc: () => void,
   ) {}
@@ -31,19 +30,18 @@ export class SessionLifecycleHandler {
     event: SessionStartPayload,
     ctx: ExtensionContext,
   ): Promise<void> {
-    const { session } = this;
-    session.refreshConfig(ctx);
-    session.resetForNewSession(ctx);
-    session.logResolvedConfigPaths();
+    this.session.refreshConfig(ctx);
+    this.session.resetForNewSession(ctx);
+    this.session.logResolvedConfigPaths();
 
-    const agentName = session.resolveAgentName(ctx);
-    const policyIssues = session.getConfigIssues(agentName ?? undefined);
+    const agentName = this.session.resolveAgentName(ctx);
+    const policyIssues = this.session.getConfigIssues(agentName ?? undefined);
     for (const issue of policyIssues) {
-      session.logger.warn(issue);
+      this.session.logger.warn(issue);
     }
 
     if (event.reason === "reload") {
-      session.logger.debug("lifecycle.reload", {
+      this.session.logger.debug("lifecycle.reload", {
         triggeredBy: "session_start",
         reason: event.reason,
         cwd: ctx.cwd,
@@ -57,23 +55,21 @@ export class SessionLifecycleHandler {
       return Promise.resolve();
     }
 
-    const { session } = this;
-    session.reload();
-    session.logger.debug("lifecycle.reload", {
+    this.session.reload();
+    this.session.logger.debug("lifecycle.reload", {
       triggeredBy: "resources_discover",
       reason: event.reason,
-      cwd: session.getRuntimeContext()?.cwd ?? null,
+      cwd: this.session.getRuntimeContext()?.cwd ?? null,
     });
     return Promise.resolve();
   }
 
   handleSessionShutdown(): Promise<void> {
-    const { session } = this;
-    const ctx = session.getRuntimeContext();
+    const ctx = this.session.getRuntimeContext();
     if (ctx) {
       ctx.ui.setStatus(PERMISSION_SYSTEM_STATUS_KEY, undefined);
     }
-    session.shutdown();
+    this.session.shutdown();
     this.cleanupRpc();
     return Promise.resolve();
   }

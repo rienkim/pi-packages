@@ -41,7 +41,6 @@ export function shouldExposeTool(
  */
 export class AgentPrepHandler {
   constructor(
-    // biome-ignore lint/correctness/noUnusedPrivateClassMembers: accessed via destructuring (const { session } = this)
     private readonly session: PermissionSession,
     private readonly toolRegistry: ToolRegistry,
   ) {}
@@ -51,11 +50,10 @@ export class AgentPrepHandler {
     event: BeforeAgentStartPayload,
     ctx: ExtensionContext,
   ): Promise<BeforeAgentStartEventResult> {
-    const { session } = this;
-    session.activate(ctx);
-    session.refreshConfig(ctx);
+    this.session.activate(ctx);
+    this.session.refreshConfig(ctx);
 
-    const agentName = session.resolveAgentName(ctx, event.systemPrompt);
+    const agentName = this.session.resolveAgentName(ctx, event.systemPrompt);
     const allTools = this.toolRegistry.getAll();
     const allowedTools: string[] = [];
 
@@ -66,7 +64,7 @@ export class AgentPrepHandler {
       }
       if (
         shouldExposeTool(toolName, agentName, (t, a) =>
-          session.getToolPermission(t, a),
+          this.session.getToolPermission(t, a),
         )
       ) {
         allowedTools.push(toolName);
@@ -74,24 +72,24 @@ export class AgentPrepHandler {
     }
 
     const activeToolsCacheKey = createActiveToolsCacheKey(allowedTools);
-    if (session.shouldUpdateActiveTools(activeToolsCacheKey)) {
+    if (this.session.shouldUpdateActiveTools(activeToolsCacheKey)) {
       this.toolRegistry.setActive(allowedTools);
-      session.commitActiveToolsCacheKey(activeToolsCacheKey);
+      this.session.commitActiveToolsCacheKey(activeToolsCacheKey);
     }
 
     const promptStateCacheKey = createBeforeAgentStartPromptStateKey({
       agentName,
       cwd: ctx.cwd,
-      permissionStamp: session.getPolicyCacheStamp(agentName ?? undefined),
+      permissionStamp: this.session.getPolicyCacheStamp(agentName ?? undefined),
       systemPrompt: event.systemPrompt,
       allowedToolNames: allowedTools,
     });
 
-    if (!session.shouldUpdatePromptState(promptStateCacheKey)) {
+    if (!this.session.shouldUpdatePromptState(promptStateCacheKey)) {
       return {};
     }
 
-    session.commitPromptStateCacheKey(promptStateCacheKey);
+    this.session.commitPromptStateCacheKey(promptStateCacheKey);
 
     const toolPromptResult = sanitizeAvailableToolsSection(
       event.systemPrompt,
@@ -99,11 +97,11 @@ export class AgentPrepHandler {
     );
     const skillPromptResult = resolveSkillPromptEntries(
       toolPromptResult.prompt,
-      session,
+      this.session,
       agentName,
       ctx.cwd,
     );
-    session.setActiveSkillEntries(skillPromptResult.entries);
+    this.session.setActiveSkillEntries(skillPromptResult.entries);
 
     if (skillPromptResult.prompt !== event.systemPrompt) {
       return { systemPrompt: skillPromptResult.prompt };

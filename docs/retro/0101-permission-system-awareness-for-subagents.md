@@ -91,3 +91,5 @@ The shipping stage consumed more time than the feature work due to inheriting ~1
 1. `AGENTS.md` — Added "Biome / ESLint linter conflicts" subsection under Code Style: when both linters conflict on assertions, restructure to eliminate the assertion.
 2. `.pi/prompts/ship-issue.md` — Added step 2 "Pre-push lint check": run `pnpm run lint` from the repo root before pushing.
    Renumbered subsequent steps (3→4, 4→5, 5→6, 6→7).
+3. `packages/pi-permission-system/src/handlers/` — Replaced `const { session } = this` destructuring with direct `this.session` access in `before-agent-start.ts`, `lifecycle.ts`, and `permission-gate-handler.ts`.
+   Removed all 3 `biome-ignore` comments that suppressed the resulting false positive.

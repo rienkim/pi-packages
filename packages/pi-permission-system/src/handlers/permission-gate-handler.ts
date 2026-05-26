@@ -47,7 +47,6 @@ interface InputPayload {
  */
 export class PermissionGateHandler {
   constructor(
-    // biome-ignore lint/correctness/noUnusedPrivateClassMembers: accessed via destructuring (const { session } = this)
     private readonly session: PermissionSession,
     private readonly events: PermissionEventBus,
     private readonly toolRegistry: ToolRegistry,
@@ -57,10 +56,9 @@ export class PermissionGateHandler {
     event: unknown,
     ctx: ExtensionContext,
   ): Promise<{ block?: true; reason?: string }> {
-    const { session } = this;
-    session.activate(ctx);
+    this.session.activate(ctx);
 
-    const agentName = session.resolveAgentName(ctx);
+    const agentName = this.session.resolveAgentName(ctx);
     const toolName = getToolNameFromValue(event);
 
     if (!toolName) {
@@ -100,22 +98,22 @@ export class PermissionGateHandler {
     };
 
     // ── Shared gate adapter closures ─────────────────────────────────────
-    const canConfirm = () => session.canPrompt(ctx);
+    const canConfirm = () => this.session.canPrompt(ctx);
     const promptPermission = (details: PromptPermissionDetails) =>
-      session.prompt(ctx, details);
+      this.session.prompt(ctx, details);
     const emitDecision: GateRunnerDeps["emitDecision"] = (e) =>
       emitDecisionEvent(this.events, e);
     // eslint-disable-next-line @typescript-eslint/unbound-method -- logger.review is a plain function closure; no this-binding issue
-    const writeReviewLog = session.logger.review;
+    const writeReviewLog = this.session.logger.review;
     const checkPermission: GateRunnerDeps["checkPermission"] = (
       surface,
       input,
       agent,
       sessionRules,
-    ) => session.checkPermission(surface, input, agent, sessionRules);
-    const getSessionRuleset = () => session.getSessionRuleset();
+    ) => this.session.checkPermission(surface, input, agent, sessionRules);
+    const getSessionRuleset = () => this.session.getSessionRuleset();
     const approveSessionRule = (surface: string, pattern: string) =>
-      session.approveSessionRule(surface, pattern);
+      this.session.approveSessionRule(surface, pattern);
 
     // ── Shared runner deps (built once, reused for all gates) ────────────
     const runnerDeps: GateRunnerDeps = {
@@ -130,7 +128,7 @@ export class PermissionGateHandler {
 
     // ── Skill-read gate (descriptor + runner) ───────────────────────────────
     const skillDescriptor = describeSkillReadGate(tcc, () =>
-      session.getActiveSkillEntries(),
+      this.session.getActiveSkillEntries(),
     );
     if (skillDescriptor) {
       const skillResult = await runGateCheck(
@@ -166,8 +164,8 @@ export class PermissionGateHandler {
 
     // ── External-directory gate (descriptor + runner) ────────────────────────
     const infraDirs = [
-      ...session.getInfrastructureDirs(),
-      ...session.getInfrastructureReadPaths(),
+      ...this.session.getInfrastructureDirs(),
+      ...this.session.getInfrastructureReadPaths(),
     ];
     const extDirDesc = describeExternalDirectoryGate(tcc, infraDirs);
     if (extDirDesc) {
@@ -265,16 +263,15 @@ export class PermissionGateHandler {
     event: InputPayload,
     ctx: ExtensionContext,
   ): Promise<InputEventResult> {
-    const { session } = this;
-    session.activate(ctx);
+    this.session.activate(ctx);
 
     const skillName = extractSkillNameFromInput(event.text);
     if (!skillName) {
       return { action: "continue" };
     }
 
-    const agentName = session.resolveAgentName(ctx);
-    const check = session.checkPermission(
+    const agentName = this.session.resolveAgentName(ctx);
+    const check = this.session.checkPermission(
       "skill",
       { name: skillName },
       agentName ?? undefined,
@@ -291,14 +288,14 @@ export class PermissionGateHandler {
       skillName,
       agentName ?? undefined,
     );
-    const skillInputCanConfirm = session.canPrompt(ctx);
+    const skillInputCanConfirm = this.session.canPrompt(ctx);
     let skillInputAutoApproved = false;
     const skillInputGate = await applyPermissionGate({
       state: check.state,
       canConfirm: skillInputCanConfirm,
       promptForApproval: async () => {
-        const decision = await session.prompt(ctx, {
-          requestId: session.createPermissionRequestId("skill-input"),
+        const decision = await this.session.prompt(ctx, {
+          requestId: this.session.createPermissionRequestId("skill-input"),
           source: "skill_input",
           agentName,
           message: skillInputMessage,
@@ -308,7 +305,7 @@ export class PermissionGateHandler {
         return decision;
       },
       // eslint-disable-next-line @typescript-eslint/unbound-method -- logger.review is a plain function closure; no this-binding issue
-      writeLog: session.logger.review,
+      writeLog: this.session.logger.review,
       logContext: {
         source: "skill_input",
         skillName,
