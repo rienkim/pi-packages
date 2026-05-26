@@ -6,7 +6,7 @@
  * cleanupResult is recorded once at completion or error — it is not set at construction.
  */
 
-import type { WorktreeCleanupResult, WorktreeInfo } from "#src/lifecycle/worktree";
+import type { WorktreeCleanupResult, WorktreeInfo, WorktreeManager } from "#src/lifecycle/worktree";
 
 export type { WorktreeCleanupResult, WorktreeInfo };
 
@@ -31,5 +31,15 @@ export class WorktreeState {
 	/** Record the cleanup result. Called once on agent completion or error. */
 	recordCleanup(result: WorktreeCleanupResult): void {
 		this._cleanupResult = result;
+	}
+
+	/**
+	 * Perform worktree cleanup and record the result.
+	 * Tell-Don't-Ask: callers no longer need to orchestrate cleanup + recordCleanup separately.
+	 */
+	performCleanup(worktrees: WorktreeManager, description: string): WorktreeCleanupResult {
+		const result = worktrees.cleanup(this, description);
+		this._cleanupResult = result;
+		return result;
 	}
 }
