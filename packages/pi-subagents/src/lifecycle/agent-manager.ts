@@ -281,11 +281,7 @@ export class AgentManager {
         // Update execution collaborator with final session/outputFile from runner
         record.execution = { session, outputFile: sessionFile ?? record.execution?.outputFile };
 
-        if (options.isBackground) {
-          this.runningBackground--;
-          try { this.observer?.onAgentCompleted(record); } catch (err) { debugLog("onAgentCompleted observer", err); }
-          this.drainQueue();
-        }
+        if (options.isBackground) this.finalizeBackgroundRun(record);
         return responseText;
       })
       .catch((err: unknown) => {
@@ -301,15 +297,18 @@ export class AgentManager {
           } catch (err) { debugLog("cleanupWorktree on agent error", err); }
         }
 
-        if (options.isBackground) {
-          this.runningBackground--;
-          this.observer?.onAgentCompleted(record);
-          this.drainQueue();
-        }
+        if (options.isBackground) this.finalizeBackgroundRun(record);
         return "";
       });
 
     record.promise = promise;
+  }
+
+  /** Decrement background counter, notify observer (crash-safe), and drain the queue. */
+  private finalizeBackgroundRun(record: AgentRecord): void {
+    this.runningBackground--;
+    try { this.observer?.onAgentCompleted(record); } catch (err) { debugLog("onAgentCompleted observer", err); }
+    this.drainQueue();
   }
 
   /** Start queued agents up to the concurrency limit. */
