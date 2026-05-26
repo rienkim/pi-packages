@@ -114,6 +114,12 @@ Use `scripts/issue-context.sh <N>` to gather all available context for an issue 
 
 Use `colgrep` for intent-based codebase exploration and convention discovery; use `grep` for exact symbol matching.
 
+### Biome / ESLint linter conflicts
+
+Biome's `noNonNullAssertion` bans `x!` and ESLint's `no-unnecessary-type-assertion` auto-fixes `x as T` back to `x!`.
+When both linters run on the same file, assertion-based workarounds create an unsolvable loop.
+Fix: restructure the code to eliminate the assertion entirely (explicit `if` guard with early return).
+
 Before implementing, refactoring, or reviewing code, load the `code-design` skill for design principles and structural heuristics.
 
 ## Markdown

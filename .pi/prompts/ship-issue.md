@@ -15,13 +15,19 @@ Before pushing, make sure local `HEAD` is current with the remote:
    Do not attempt to stash, rebase, force, or otherwise resolve.
 3. Only proceed once the pull reports a clean fast-forward (or `Already up to date.`).
 
-## 2. Push
+## 2. Pre-push lint check
+
+Run `pnpm run lint` from the **repo root** (not a package subdirectory) to catch cross-package lint violations locally.
+CI runs lint at the root level; package-level `pnpm run lint` may miss issues in sibling packages.
+If it fails, fix the issues and commit before pushing.
+
+## 3. Push
 
 - Determine the current branch (`git branch --show-current`).
 - `git push`.
 - If the push is rejected as non-fast-forward, stop and report — do not force-push.
 
-## 3. Verify CI on the pushed commit
+## 4. Verify CI on the pushed commit
 
 1. Use `ci_find` with the pushed SHA (`git rev-parse HEAD`) and workflow `ci` to locate the CI run.
 2. Use `ci_watch` with the returned `run_id` and workflow `ci` to wait for it to complete.
@@ -29,7 +35,7 @@ Before pushing, make sure local `HEAD` is current with the remote:
    Do not close the issue or merge anything.
 4. If it lands `success`, continue.
 
-## 4. Close the issue
+## 5. Close the issue
 
 Build the close comment from the commits since the previous release:
 
@@ -48,17 +54,17 @@ The comment should include:
 
 Then use `issue_close` with issue number `$1` and the summary as the comment.
 
-## 5. Merge release-please PR (if present)
+## 6. Merge release-please PR (if present)
 
 1. Use `release_pr_find` to locate an open release-please PR.
-2. If none is found (timeout), skip to step 6.
+2. If none is found (timeout), skip to step 7.
 3. If one exists, use `release_pr_merge` with the PR number.
    - Note: release-please PRs typically have **no CI runs** because PRs created by the default `GITHUB_TOKEN` do not trigger workflows.
      This is expected; do not block on it.
    - If `release_pr_merge` returns an error (not mergeable), stop and report — let the user decide.
 4. Use `release_watch` to wait for the release tag to land on HEAD.
 
-## 6. Final report
+## 7. Final report
 
 Print:
 
