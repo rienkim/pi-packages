@@ -34,3 +34,31 @@ All 4 commits landed cleanly; full suite green at every step.
 - The `createSessionRunner` + `createRunResult` chain required careful identity-check verification: `createRunResult(sess)` calls `toAgentSession(sess)` which casts without creating a new object, so `toBe(session)` assertions in the execution-state tests still pass. ✓
 - ESLint auto-fixed two cosmetic issues on commit (`activity = undefined` → `activity` destructuring, `session as unknown` cast removal) — caught by pre-commit hooks, not a problem in practice.
 - The `assertRenderFitsWidths` helper in `conversation-viewer.test.ts` reduced the 10 render-safety tests from ~8 lines each to 1–4 lines each; the `setupDetail` helper in `agent-config-editor.test.ts` eliminated 3 repeated setup lines per test across 18 `showAgentDetail` tests.
+
+## Stage: Final Retrospective (2026-05-26T17:50:31Z)
+
+### Session summary
+
+All three stages (planning, TDD, ship) completed in a single session with zero user corrections.
+Four TDD commits landed cleanly, CI passed on first push, issue #219 closed, and `pi-subagents-v7.8.1` released.
+
+### Observations
+
+#### What went well
+
+- Clean incremental verification: `pnpm vitest run <file>` ran after every code change, full suite at the end.
+  No regressions at any step.
+- The plan's decision to keep gated runners inline proved correct — tests with `Promise.withResolvers` flow control stayed readable without abstraction.
+- The `write` tool was the right choice for `conversation-viewer.test.ts` and `agent-config-editor.test.ts` (pervasive changes), while `edit` with 16 targeted replacements worked cleanly for `agent-manager.test.ts` (scattered but formulaic substitutions).
+- Ship stage used `deepseek-v4-flash` for purely mechanical CI/release steps — appropriate model-task alignment.
+
+#### What caused friction (agent side)
+
+- `other` — ESLint pre-commit hooks auto-fixed two cosmetic patterns (`activity = undefined` → bare destructuring; `session as unknown` cast removal), requiring re-stage + re-commit.
+  Impact: ~10 seconds per occurrence, no rework.
+  This is routine and inherent to the workflow.
+
+#### What caused friction (user side)
+
+- None observed.
+  The user's three-stage prompt chain (`/plan-issue` → `/tdd-plan` → `/ship-issue`) provided sufficient context at each stage with no manual intervention needed.
