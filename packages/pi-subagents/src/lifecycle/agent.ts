@@ -44,7 +44,7 @@ export interface AgentInit {
 	error?: string;
 	abortController?: AbortController;
 	invocation?: AgentInvocation;
-	promise?: Promise<string>;
+	promise?: Promise<void>;
 }
 
 export class Agent {
@@ -83,7 +83,7 @@ export class Agent {
 	/** AbortController for cancelling this agent. Set at construction; used only by AgentManager. */
 	readonly abortController?: AbortController;
 	/** Promise for the full agent run (including post-processing). Set once by AgentManager. */
-	promise?: Promise<string>;
+	promise?: Promise<void>;
 
 	// Phase-specific collaborators — each born complete when their info becomes available
 	execution?: ExecutionState;

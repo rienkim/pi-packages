@@ -26,7 +26,7 @@ describe("createTestAgent", () => {
 	});
 
 	it("allows setting promise (optional field not in defaults)", () => {
-		const promise = Promise.resolve("done");
+		const promise = Promise.resolve();
 		const record = createTestAgent({ promise });
 		expect(record.promise).toBe(promise);
 	});

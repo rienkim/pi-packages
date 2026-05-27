@@ -57,13 +57,13 @@ describe("toSubagentRecord", () => {
   });
 
   it("strips promise from the record", () => {
-    const record = createTestAgent({ promise: Promise.resolve("done") });
+    const record = createTestAgent({ promise: Promise.resolve() });
     const result = toSubagentRecord(record);
     expect(result).not.toHaveProperty("promise");
   });
 
   it("strips abortController, promise, and collaborator fields from the record", () => {
-    const record = createTestAgent({ abortController: new AbortController(), promise: Promise.resolve("x") });
+    const record = createTestAgent({ abortController: new AbortController(), promise: Promise.resolve() });
     const result = toSubagentRecord(record);
     expect(result).not.toHaveProperty("abortController");
     expect(result).not.toHaveProperty("promise");

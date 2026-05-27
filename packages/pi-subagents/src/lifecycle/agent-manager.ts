@@ -305,8 +305,8 @@ export class AgentManager {
         options.onSessionCreated?.(session, record);
       },
     })
-      .then((result) => handle.complete(result))
-      .catch((err: unknown) => { handle.fail(err); return ""; });
+      .then((result) => { handle.complete(result); })
+      .catch((err: unknown) => { handle.fail(err); });
   }
 
   /** Decrement background counter, notify observer (crash-safe), and drain the queue. */
@@ -471,7 +471,7 @@ export class AgentManager {
       const pending = [...this.agents.values()]
         .filter(r => r.status === "running" || r.status === "queued")
         .map(r => r.promise)
-        .filter((p): p is Promise<string> => p != null);
+        .filter((p): p is Promise<void> => p != null);
       if (pending.length === 0) break;
       await Promise.allSettled(pending);
     }

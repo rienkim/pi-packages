@@ -152,7 +152,7 @@ describe("AgentManager — completion callbacks", () => {
     } } }));
 
     const id = spawnBg(manager);
-    await expect(manager.getRecord(id)!.promise).resolves.toBe("done");
+    await expect(manager.getRecord(id)!.promise).resolves.toBeUndefined();
 
     expect(manager.getRecord(id)!.status).toBe("completed");
   });
