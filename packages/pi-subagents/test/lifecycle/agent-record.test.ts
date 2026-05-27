@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { AgentRecord } from "#src/lifecycle/agent-record";
 
 describe("AgentRecord — constructor", () => {
@@ -400,5 +400,41 @@ describe("convenience getters", () => {
 			record.execution = { session: {} as any, outputFile: undefined };
 			expect(record.outputFile).toBeUndefined();
 		});
+	});
+});
+
+describe("AgentRecord — queueSteer", () => {
+	it("buffers a steer message", () => {
+		const record = new AgentRecord({ id: "1", type: "general-purpose", description: "test" });
+		record.queueSteer("hello");
+		record.queueSteer("world");
+		expect(record.pendingSteerCount).toBe(2);
+	});
+
+	it("starts with an empty steer buffer", () => {
+		const record = new AgentRecord({ id: "1", type: "general-purpose", description: "test" });
+		expect(record.pendingSteerCount).toBe(0);
+	});
+});
+
+describe("AgentRecord — flushPendingSteers", () => {
+	it("calls session.steer for each buffered message and clears the buffer", async () => {
+		const record = new AgentRecord({ id: "1", type: "general-purpose", description: "test" });
+		record.queueSteer("msg1");
+		record.queueSteer("msg2");
+
+		const steered: string[] = [];
+		const session = { steer: (m: string) => { steered.push(m); return Promise.resolve(); } };
+		record.flushPendingSteers(session as any);
+
+		expect(steered).toEqual(["msg1", "msg2"]);
+		expect(record.pendingSteerCount).toBe(0);
+	});
+
+	it("does nothing when the buffer is empty", () => {
+		const record = new AgentRecord({ id: "1", type: "general-purpose", description: "test" });
+		const session = { steer: vi.fn(() => Promise.resolve()) };
+		record.flushPendingSteers(session as any);
+		expect(session.steer).not.toHaveBeenCalled();
 	});
 });

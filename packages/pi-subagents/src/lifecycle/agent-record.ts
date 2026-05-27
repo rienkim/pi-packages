@@ -8,6 +8,9 @@
  * Stats (toolUses, lifetimeUsage, compactionCount) are owned by the class and
  * accumulated via mutation methods (incrementToolUses, addUsage, incrementCompactions).
  *
+ * Behavior (abort, steer buffering, worktree setup) lives on the record rather
+ * than on AgentManager — each agent manages its own lifecycle concerns.
+ *
  * Phase-specific collaborators (execution, worktreeState, notification) are attached
  * after construction as lifecycle information becomes available.
  */
@@ -85,6 +88,11 @@ export class AgentRecord {
 	execution?: ExecutionState;
 	worktreeState?: WorktreeState;
 	notification?: NotificationState;
+
+	// Steer buffer — messages queued before the session is ready
+	private _pendingSteers: string[] = [];
+	/** Number of steer messages waiting to be delivered. */
+	get pendingSteerCount(): number { return this._pendingSteers.length; }
 
 	/** The active agent session, or undefined before the session is created. */
 	get session(): AgentSession | undefined {
@@ -188,6 +196,25 @@ export class AgentRecord {
 	markStopped(completedAt?: number): void {
 		this._status = "stopped";
 		this._completedAt = completedAt ?? Date.now();
+	}
+
+	/**
+	 * Buffer a steer message for delivery once the session is ready.
+	 * Called when steer is requested before onSessionCreated fires.
+	 */
+	queueSteer(message: string): void {
+		this._pendingSteers.push(message);
+	}
+
+	/**
+	 * Flush all buffered steer messages to the session and clear the buffer.
+	 * Called from onSessionCreated once the session is available.
+	 */
+	flushPendingSteers(session: AgentSession): void {
+		for (const msg of this._pendingSteers) {
+			session.steer(msg).catch(() => {});
+		}
+		this._pendingSteers = [];
 	}
 
 	/** Reset for resume: running status, new startedAt, clear completedAt/result/error. */
