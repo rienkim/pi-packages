@@ -665,103 +665,11 @@ Phase 13 addressed remaining closure factories, the last fallow refactoring targ
 All six steps are closed: [#214], [#215], [#216], [#217], [#218], [#219].
 See [phase-13-remaining-smells.md](history/phase-13-remaining-smells.md) for details.
 
-## Improvement roadmap (Phase 14 — strip policy from core)
+## Phase 14 (complete)
 
-Phase 14 removes tool and extension policy enforcement from pi-subagents.
-This code duplicates what pi-permission-system already provides with richer semantics (allow/ask/deny vs. binary hide).
-Removing it simplifies `runAgent`, shrinks `AgentConfig` and `SessionConfig`, and makes the Phase 15 domain-model work operate on a cleaner codebase.
-
-### Findings summary
-
-| Finding                                                                                   | Category      | Impact | Risk | Priority |
-| ----------------------------------------------------------------------------------------- | ------------- | ------ | ---- | -------- |
-| `disallowed_tools` duplicates pi-permission-system's `permission:` frontmatter            | A: Overlap    | 4      | 2    | 12       |
-| `extensions: string[]` allowlist is tool filtering disguised as lifecycle control         | A: Overlap    | 3      | 2    | 9        |
-| `filterActiveTools` ran twice (pre-bind + post-bind) to catch extension-registered tools  | B: Complexity | 3      | 1    | ✓ done   |
-| `ToolFilterConfig` existed solely to carry filtering state through the runner             | C: Accidental | 2      | 1    | ✓ done   |
-| `Agent` tool name is PascalCase — misaligns with Pi's lowercase built-in convention       | D: Convention | 2      | 1    | 3        |
-
-### Step 1: Remove `disallowed_tools` — [#237] ✅ Complete
-
-Remove the `disallowedTools` field from `AgentConfig` and all code that processes it.
-
-1. Remove `disallowedTools` from the `AgentConfig` interface in `types.ts`.
-2. Remove `disallowed_tools` parsing from custom agent frontmatter in `custom-agents.ts`.
-3. Remove `disallowedSet` from `ToolFilterConfig` in `session-config.ts`.
-4. Remove the `disallowedSet` construction in `assembleSessionConfig`.
-5. Remove the `disallowedSet` branch from `filterActiveTools` in `agent-runner.ts`.
-6. Remove `disallowed_tools` from the agent config editor UI.
-7. Remove `disallowed_tools` from the agent creation wizard.
-8. Update tests.
-
-- Target: `types.ts`, `custom-agents.ts`, `session-config.ts`, `agent-runner.ts`, `ui/agent-config-editor.ts`, `ui/agent-creation-wizard.ts`
-- Smell: A (responsibility overlap with pi-permission-system)
-- Outcome: users migrate to `permission:` frontmatter for tool restrictions; single source of truth for access control
-
-### Step 2: Remove `extensions` filtering — [#238] ✅ Complete
-
-Remove the `extensions: string[]` allowlist and simplify the field to a boolean.
-The `extensions: false` case (used by `isolated`) is retained in this step and removed in Phase 16.
-
-1. Change `extensions` type from `true | string[] | false` to `boolean` in `AgentConfig`.
-2. Remove the `extensions` array branch from `filterActiveTools` in `agent-runner.ts`.
-3. Remove `extensions` from the agent config editor and creation wizard.
-4. Update custom agent frontmatter parsing to treat array values as `true` (with a warning).
-5. Update tests.
-
-- Target: `types.ts`, `agent-runner.ts`, `session-config.ts`, `ui/agent-config-editor.ts`, `ui/agent-creation-wizard.ts`
-- Smell: A (tool filtering disguised as extension lifecycle control)
-- Outcome: `filterActiveTools` reduces to two concerns: recursion guard and `extensions: false` passthrough
-
-### Step 3: Collapse `filterActiveTools` to recursion guard — [#239] ✅ Complete
-
-With Steps 1–2 complete, `filterActiveTools` had only two remaining branches: the `EXCLUDED_TOOL_NAMES` recursion guard and the `extensions === false` passthrough.
-Inlined the `extensions === false` passthrough into the callsite and reduced the function to its essential purpose.
-
-1. Simplified `filterActiveTools` to filter only `EXCLUDED_TOOL_NAMES`.
-2. Removed `ToolFilterConfig` — the function no longer needs a config bag.
-3. Removed the pre-bind filter call — extension tools aren't in the active set pre-bind, so the guard is a no-op there.
-4. Kept a single post-bind filter call for the recursion guard.
-5. Flattened `SessionConfig` — removed `toolFilter: ToolFilterConfig`; `toolNames` and `extensions` are top-level fields.
-6. Updated tests.
-
-- Target: `agent-runner.ts`, `session-config.ts`
-- Smell: B (accidental complexity), C (two-pass filter dance)
-- Outcome: `filterActiveTools` is a one-liner; `SessionConfig` loses one nested type; the pre-bind/post-bind dance is gone
-
-### Step 4: Rename `Agent` tool to `subagent` — [#242] ✅ Complete
-
-Rename the `Agent` tool to `subagent` to align with Pi's built-in tool naming convention (all lowercase: `read`, `bash`, `write`, `edit`, `find`, `grep`, `ls`).
-The PascalCase name was inherited from tintinweb/pi-subagents (mimicking Claude Code's convention), but Pi uses lowercase for all built-in tools.
-The companion tools are already lowercase snake_case (`get_subagent_result`, `steer_subagent`), and nicobailon/pi-subagents already uses `subagent`.
-
-1. Rename tool name from `"Agent"` to `"subagent"` in `agent-tool.ts`.
-2. Update `label` and `promptSnippet` in the tool definition.
-3. Update `EXCLUDED_TOOL_NAMES` in `agent-runner.ts`.
-4. Update the fallback display name in `agent-tool.ts`.
-5. Update architecture docs (tool references, domain diagrams, cross-extension section).
-6. Update pi-permission-system docs that reference the `Agent` tool name.
-7. Update tests.
-
-- Target: `tools/agent-tool.ts`, `lifecycle/agent-runner.ts`, `docs/`, `../pi-permission-system/docs/`
-- Smell: D (convention mismatch — PascalCase in a lowercase ecosystem)
-- Outcome: all three tools use consistent lowercase naming; aligns with Pi's built-in convention
-
-### Step dependency diagram
-
-```mermaid
-flowchart LR
-    S1["Step 1<br/>Remove disallowed_tools"]
-    S2["Step 2<br/>Remove extensions filtering"]
-    S3["Step 3<br/>Collapse filterActiveTools"]
-    S4["Step 4<br/>Rename Agent to subagent"]
-
-    S1 --> S3
-    S2 --> S3
-```
-
-Steps 1, 2, and 4 are independent and can proceed in parallel.
-Step 3 depends on Steps 1 and 2.
+Phase 14 removed tool and extension policy enforcement from pi-subagents, eliminating overlap with pi-permission-system.
+All four steps are closed: [#237], [#238], [#239], [#242].
+See [phase-14-strip-policy.md](history/phase-14-strip-policy.md) for details.
 
 [#237]: https://github.com/gotgenes/pi-packages/issues/237
 [#238]: https://github.com/gotgenes/pi-packages/issues/238
@@ -896,7 +804,7 @@ By this point the core is minimal and stable — the API boundary has been prove
 
 ## Refactoring history
 
-Phases 1–5 and 7–12 are complete.
+Phases 1–5, 7–14 are complete.
 Phase 6 (UI extraction to a separate package) is deferred.
 Detailed records are preserved in per-phase history files:
 
@@ -915,7 +823,7 @@ Detailed records are preserved in per-phase history files:
 | 11       | Closure factories to classes                        | Complete                                                                         | [phase-11-closure-to-class.md](history/phase-11-closure-to-class.md)                 |
 | 12       | Complexity reduction and test fixture extraction    | Complete                                                                         | [phase-12-complexity-test-fixtures.md](history/phase-12-complexity-test-fixtures.md) |
 | 13       | Remaining structural smells                         | Complete                                                                         | [phase-13-remaining-smells.md](history/phase-13-remaining-smells.md)                 |
-| 14       | Strip policy from core                              | Planned                                                                          | —                                                                                    |
+| 14       | Strip policy from core                              | Complete                                                                         | [phase-14-strip-policy.md](history/phase-14-strip-policy.md)                         |
 | 15       | Domain model evolution                              | Planned                                                                          | —                                                                                    |
 | 16       | Invert dependencies                                 | Planned                                                                          | —                                                                                    |
 | 17       | Extract UI to separate package                      | Planned                                                                          | —                                                                                    |
@@ -936,7 +844,7 @@ Detailed records are preserved in per-phase history files:
 | Phase 11           | #192, #193, #194, #195, #196                               | SessionContext, runtime queries, interface alignment, tool classes, runner/menu classes, index.ts simplification                                         |
 | Phase 12           | #205, #206, #207, #208                                     | renderWidgetLines, showAgentDetail, widget update, shared test fixtures                                                                                  |
 | Phase 13           | #214, #215, #216, #217, #218, #219                         | Closure-to-class, buildParentContext, startAgent decomp, overwrite guard, settings SDK, test duplication                                                 |
-| Phase 14           | #237, #238, #239                                           | Remove disallowed_tools, remove extensions filtering, collapse filterActiveTools                                                                         |
+| Phase 14           | #237, #238, #239, #242                                     | Remove disallowed_tools, remove extensions filtering, collapse filterActiveTools, rename Agent to subagent                                               |
 | Phase 15           | #227, #228, #229, #230, #231, #232                         | Agent domain model, async startAgent, onSessionCreated observer, ConcurrencyQueue, relay deps, resume unification                                        |
 
 The remaining open issue is #22 (parent-session resolution), a cross-extension track that does not gate the structural work.
