@@ -194,19 +194,16 @@ export interface AgentRunner {
 }
 
 /**
- * Concrete AgentRunner backed by a RunnerIO boundary.
+ * Concrete AgentRunner backed by RunnerDeps.
  *
- * Captures io at construction time so AgentManager remains IO-unaware.
+ * Captures IO, exec, and registry at construction time so AgentManager
+ * remains unaware of runner-internal dependencies.
  */
 export class ConcreteAgentRunner implements AgentRunner {
-  constructor(private readonly io: RunnerIO) {}
+  constructor(private readonly deps: RunnerDeps) {}
 
   run(snapshot: ParentSnapshot, type: SubagentType, prompt: string, options: RunOptions): Promise<RunResult> {
-    return runAgent(snapshot, type, prompt, options, {
-      io: this.io,
-      exec: options.context.exec,
-      registry: options.context.registry,
-    });
+    return runAgent(snapshot, type, prompt, options, this.deps);
   }
 
   resume(session: AgentSession, prompt: string, options?: ResumeOptions): Promise<string> {

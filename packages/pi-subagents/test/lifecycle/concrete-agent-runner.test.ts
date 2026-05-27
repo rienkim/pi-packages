@@ -1,7 +1,7 @@
 import type { AgentSession } from "@earendil-works/pi-coding-agent";
 import { describe, expect, it, vi } from "vitest";
 import { ConcreteAgentRunner } from "#src/lifecycle/agent-runner";
-import { createAgentLookup, createRunnerIO } from "#test/helpers/runner-io";
+import { createRunnerDeps, createRunnerIO } from "#test/helpers/runner-io";
 import { STUB_SNAPSHOT } from "#test/helpers/stub-ctx";
 
 // ── Minimal session stub ──────────────────────────────────────────────────────
@@ -24,22 +24,20 @@ function makeSession(text: string) {
 	return { session: session as unknown as AgentSession };
 }
 
-const registry = createAgentLookup();
-
 describe("ConcreteAgentRunner", () => {
 	it("delegates run() to runAgent and returns a RunResult", async () => {
-		const io = createRunnerIO();
+		const deps = createRunnerDeps();
 		const { session } = makeSession("result text");
-		io.createSession.mockResolvedValue({ session });
+		deps.io.createSession.mockResolvedValue({ session });
 
-		const runner = new ConcreteAgentRunner(io);
+		const runner = new ConcreteAgentRunner(deps);
 		const result = await runner.run(STUB_SNAPSHOT, "Explore", "do the thing", {
-			context: { exec: vi.fn(), registry },
+			context: {},
 		});
 
 		expect(result.responseText).toBe("result text");
 		expect(result.session).toBe(session);
-		expect(io.detectEnv).toHaveBeenCalled();
+		expect(deps.io.detectEnv).toHaveBeenCalled();
 	});
 
 	it("delegates resume() to resumeAgent and returns response text", async () => {
@@ -53,7 +51,7 @@ describe("ConcreteAgentRunner", () => {
 			prompt: vi.fn().mockResolvedValue(undefined),
 		} as unknown as AgentSession;
 
-		const runner = new ConcreteAgentRunner(createRunnerIO());
+		const runner = new ConcreteAgentRunner(createRunnerDeps());
 		const text = await runner.resume(session, "continue");
 
 		expect(text).toBe("resumed");

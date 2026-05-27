@@ -68,5 +68,19 @@ export function createAgentLookup(configOverrides?: Partial<AgentConfig>) {
 	};
 }
 
+/**
+ * Shared RunnerDeps stub factory for tests that call runAgent() or construct ConcreteAgentRunner.
+ *
+ * Bundles createRunnerIO(), a no-op exec stub, and a default agent lookup
+ * into the RunnerDeps shape expected by runAgent() and ConcreteAgentRunner.
+ */
+export function createRunnerDeps(overrides?: { registry?: ReturnType<typeof createAgentLookup> }) {
+	return {
+		io: createRunnerIO(),
+		exec: vi.fn(),
+		registry: overrides?.registry ?? createAgentLookup(),
+	};
+}
+
 /** The default agent config, exported for tests that build mutable wrappers around it. */
 export { DEFAULT_AGENT_CONFIG };
