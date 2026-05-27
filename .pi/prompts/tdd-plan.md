@@ -56,7 +56,7 @@ Before writing any code, confirm the starting state is clean:
 
 1. `pnpm run check` — must pass.
 2. `pnpm run lint` — must pass.
-3. `pnpm vitest run` — must pass.
+3. `pnpm run test` — must pass.
 
 If any check fails, stop and report to the user.
 Do not start TDD cycles from a broken baseline.
@@ -89,7 +89,7 @@ If the deviation is large, stop and ask.
 
 ## After the last TDD step
 
-1. Run the full suite: `pnpm vitest run`.
+1. Run the full suite: `pnpm run test`.
    Must be all green.
 2. Run the type check: `pnpm run check` (`tsc --noEmit`).
    Must succeed — Vitest does not typecheck.

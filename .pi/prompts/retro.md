@@ -92,7 +92,7 @@ Skip a lens entirely when it finds nothing notable.
    Flag sequences longer than 5 consecutive tool calls on the same error as "should have dispatched an Explore or Plan subagent" or "should have asked the user."
 3. **Unused-tool detection** — for each `rabbit-hole` or `missing-context` friction point, check whether a subagent type or tool was available that could have helped but was never dispatched.
    Examples: an Explore agent for codebase understanding, `colgrep` for semantic search, `web_search` for library docs.
-4. **Feedback-loop gap analysis** — check which verification tools the agent ran (`pnpm run check`, `pnpm vitest run`, `pnpm run lint`) and when in the session they were invoked.
+4. **Feedback-loop gap analysis** — check which verification tools the agent ran (`pnpm run check`, `pnpm run test`, `pnpm run lint`) and when in the session they were invoked.
    Flag cases where verification ran only at the end rather than incrementally after each change.
 
 ## Step 3 — Write the retro file

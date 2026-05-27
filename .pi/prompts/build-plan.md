@@ -89,7 +89,7 @@ If the deviation is large, stop and ask.
 
 ## After the last step
 
-1. If any `src/` or `test/` files were touched (even tangentially), run the full suite: `pnpm vitest run`.
+1. If any `src/` or `test/` files were touched (even tangentially), run the full suite: `pnpm run test`.
    Must be all green.
 2. If any `.ts` files were touched, run the type check: `pnpm run check` (`tsc --noEmit`).
    Must succeed.
