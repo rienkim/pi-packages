@@ -35,3 +35,36 @@ A follow-up skill maintenance commit updated `.pi/skills/package-pi-subagents/SK
 - Pre-completion reviewer returned **WARN** for stale `package-pi-subagents` skill content: the "Patch 2 scheduled for removal" note and the `// Patch 2 (RepOne` grep instruction were both stale after #239 completion.
   Fixed immediately as a follow-up `docs:` commit before writing retro notes.
 - `pnpm fallow dead-code` passed with 0 issues — no orphaned exports left behind.
+
+## Stage: Final Retrospective (2026-05-27T14:40:00Z)
+
+### Session summary
+
+Completed the full issue lifecycle (plan → TDD → ship → retro) in a single continuous session.
+Issue #239 shipped as `pi-subagents-v10.0.1` with 7 commits (2 refactor, 4 docs, 1 release).
+Phase 14 is now fully complete, unblocking Phase 15 (#227–#232).
+
+### Observations
+
+#### What went well
+
+- The plan's type-dependency-chain ordering (`SessionConfig` first → expected compile errors → `agent-runner.ts` resolves them) produced zero surprises during TDD.
+  Each step's red/green boundary was exactly where the plan predicted.
+- Pre-completion reviewer caught stale `package-pi-subagents` skill content ("Patch 2 scheduled for removal" and a `// Patch 2 (RepOne` grep instruction) that no longer matched source.
+  Fixed before shipping — the reviewer earned its keep.
+- Multi-model routing was well-matched: `claude-sonnet-4-6` for planning and TDD (judgment + code), `deepseek-v4-flash` for shipping (mechanical checklist), `claude-opus-4-6` for retrospective (synthesis).
+- Feedback loops were incremental: `pnpm vitest run` after each test change, `pnpm run check` after Step 1 to confirm expected errors, full suite + lint + dead-code after all steps.
+
+#### What caused friction (agent side)
+
+No friction points identified.
+This was the final step of a 3-step phase with both dependencies already closed, a well-scoped plan, and internal-only API changes — the simplest possible lifecycle.
+
+#### What caused friction (user side)
+
+None observed.
+The user's involvement was limited to issuing the four standard lifecycle commands (`/plan-issue`, `/tdd-plan`, `/ship-issue`, `/retro`) with no corrections or redirections needed.
+
+### Changes made
+
+1. Appended Final Retrospective stage entry to `packages/pi-subagents/docs/retro/0239-collapse-filter-active-tools.md`.
