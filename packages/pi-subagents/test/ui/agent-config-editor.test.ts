@@ -407,7 +407,6 @@ describe("buildEjectContent", () => {
       runInBackground: true,
       isolated: true,
       isolation: "worktree",
-      disallowedTools: ["web_search"],
     };
     const content = buildEjectContent(cfg);
     expect(content).toContain("display_name: My Agent");
@@ -415,7 +414,6 @@ describe("buildEjectContent", () => {
     expect(content).toContain("model: claude-sonnet");
     expect(content).toContain("thinking: low");
     expect(content).toContain("max_turns: 10");
-    expect(content).toContain("disallowed_tools: web_search");
     expect(content).toContain("inherit_context: true");
     expect(content).toContain("run_in_background: true");
     expect(content).toContain("isolated: true");

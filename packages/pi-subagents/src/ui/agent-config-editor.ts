@@ -53,8 +53,6 @@ export function buildEjectContent(cfg: AgentConfig): string {
   if (cfg.skills === false) fmFields.push("skills: false");
   else if (Array.isArray(cfg.skills))
     fmFields.push(`skills: ${cfg.skills.join(", ")}`);
-  if (cfg.disallowedTools?.length)
-    fmFields.push(`disallowed_tools: ${cfg.disallowedTools.join(", ")}`);
   if (cfg.inheritContext) fmFields.push("inherit_context: true");
   if (cfg.runInBackground) fmFields.push("run_in_background: true");
   if (cfg.isolated) fmFields.push("isolated: true");
