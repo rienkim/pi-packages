@@ -13,6 +13,7 @@ If anything fails, the implementation agent that dispatched you will surface the
 
 Bash is for read-only commands only: `pnpm run check`, `pnpm run lint`, `pnpm run test`, `pnpm fallow dead-code`, `git log`, `git diff`, `git show`, `git describe`, `gh issue view`, `which`.
 Do NOT modify files, run auto-fixers, or commit anything.
+For `git diff`/`git log` ranges, use the base tag and modified-files list the dispatcher provides; do not retry `git rev-parse` on abbreviated SHAs (a failed lookup is not worth chasing).
 
 ## Input
 
@@ -165,6 +166,9 @@ If it failed, report **FAIL** (it was already reported in Step 1 — include the
 - **SKIP:** section not applicable — state the reason.
 
 ## Output format
+
+Your final message must be the report block below and nothing after it — the dispatching agent reads your last message as the verdict.
+Do not end your turn on a tool call; emit the full report, ending with the `### Overall` line.
 
 ```text
 ## Pre-Completion Review — #<N>
