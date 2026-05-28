@@ -884,3 +884,129 @@ describe("Agent.run() — RunConfig threading", () => {
 		expect(runOpts.graceTurns).toBe(3);
 	});
 });
+
+// ── Agent.resume() ─────────────────────────────────────────────────────────────
+
+/** Create an Agent with a session already attached, ready for resume(). */
+function createResumableAgent(overrides?: {
+	runner?: AgentRunner;
+	observer?: AgentLifecycleObserver;
+	session?: ReturnType<typeof createMockSession>;
+}) {
+	const session = overrides?.session ?? createMockSession();
+	const runner = overrides?.runner ?? createMockRunner();
+	const agent = new Agent({
+		id: "resume-1",
+		type: "general-purpose",
+		description: "resume test",
+		status: "completed",
+		result: "first",
+		runner,
+		observer: overrides?.observer ?? {},
+	});
+	agent.execution = { session: toAgentSession(session), outputFile: undefined };
+	return { agent, session, runner };
+}
+
+describe("Agent.resume() — happy path", () => {
+	it("transitions to completed and sets result from the runner response", async () => {
+		const { agent } = createResumableAgent();
+		await agent.resume("continue");
+		expect(agent.status).toBe("completed");
+		expect(agent.result).toBe("resumed");
+	});
+
+	it("passes the prompt and signal straight through to runner.resume", async () => {
+		const { agent, runner, session } = createResumableAgent();
+		const signal = new AbortController().signal;
+		await agent.resume("continue", signal);
+		const resumeMock = runner.resume as ReturnType<typeof vi.fn>;
+		expect(resumeMock).toHaveBeenCalledOnce();
+		expect(resumeMock.mock.calls[0][0]).toBe(toAgentSession(session));
+		expect(resumeMock.mock.calls[0][1]).toBe("continue");
+		expect(resumeMock.mock.calls[0][2]).toEqual({ signal });
+	});
+
+	it("resets transition state before resuming", async () => {
+		const { agent } = createResumableAgent();
+		await agent.resume("continue");
+		expect(agent.error).toBeUndefined();
+	});
+});
+
+describe("Agent.resume() — observer lifecycle", () => {
+	it("accumulates usage and compactions from session events during resume", async () => {
+		const session = createMockSession();
+		const runner = createMockRunner({
+			resume: vi.fn().mockImplementation(async () => {
+				session.emit({ type: "message_end", message: { role: "assistant", usage: { input: 70, output: 30, cacheWrite: 5 } } });
+				session.emit({ type: "compaction_end", aborted: false, result: { tokensBefore: 999 }, reason: "overflow" });
+				return "second";
+			}),
+		});
+		const { agent } = createResumableAgent({ runner, session });
+		await agent.resume("more");
+		expect(agent.lifetimeUsage).toEqual({ input: 70, output: 30, cacheWrite: 5 });
+		expect(agent.compactionCount).toBe(1);
+	});
+
+	it("forwards compaction events through observer.onCompacted", async () => {
+		const session = createMockSession();
+		const seen: Array<{ reason: string; tokensBefore: number }> = [];
+		const observer: AgentLifecycleObserver = {
+			onCompacted: (_agent, info) => seen.push({ reason: info.reason, tokensBefore: info.tokensBefore }),
+		};
+		const runner = createMockRunner({
+			resume: vi.fn().mockImplementation(async () => {
+				session.emit({ type: "compaction_end", aborted: false, result: { tokensBefore: 123 }, reason: "threshold" });
+				return "second";
+			}),
+		});
+		const { agent } = createResumableAgent({ runner, observer, session });
+		await agent.resume("more");
+		expect(seen).toEqual([{ reason: "threshold", tokensBefore: 123 }]);
+	});
+
+	it("releases the observer subscription after resume completes", async () => {
+		const session = createMockSession();
+		const { agent } = createResumableAgent({ session });
+		await agent.resume("more");
+		// Events emitted after resume must not accumulate — subscription released.
+		session.emit({ type: "tool_execution_end" });
+		expect(agent.toolUses).toBe(0);
+	});
+});
+
+describe("Agent.resume() — error handling", () => {
+	it("transitions to error without throwing when runner.resume rejects", async () => {
+		const runner = createMockRunner({
+			resume: vi.fn().mockRejectedValue(new Error("resume exploded")),
+		});
+		const { agent } = createResumableAgent({ runner });
+		await agent.resume("more");
+		expect(agent.status).toBe("error");
+		expect(agent.error).toBe("resume exploded");
+	});
+
+	it("releases the observer subscription after resume errors", async () => {
+		const session = createMockSession();
+		const runner = createMockRunner({
+			resume: vi.fn().mockRejectedValue(new Error("boom")),
+		});
+		const { agent } = createResumableAgent({ runner, session });
+		await agent.resume("more");
+		session.emit({ type: "tool_execution_end" });
+		expect(agent.toolUses).toBe(0);
+	});
+
+	it("throws when runner is missing", async () => {
+		const agent = new Agent({ id: "1", type: "general-purpose", description: "test" });
+		agent.execution = { session: toAgentSession(createMockSession()), outputFile: undefined };
+		await expect(agent.resume("more")).rejects.toThrow(/missing runner/);
+	});
+
+	it("throws when session is missing", async () => {
+		const agent = new Agent({ id: "1", type: "general-purpose", description: "test", runner: createMockRunner() });
+		await expect(agent.resume("more")).rejects.toThrow(/missing session/);
+	});
+});

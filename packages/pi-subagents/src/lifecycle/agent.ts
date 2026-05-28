@@ -285,6 +285,39 @@ export class Agent {
 		}
 	}
 
+	/**
+	 * Resume an existing session with a new prompt, managing the observer
+	 * subscription lifecycle internally (same wiring as run()).
+	 *
+	 * Requires runner and an existing session (set when the original run created it).
+	 * The returned promise always resolves (errors are captured internally).
+	 * The parent signal flows straight through to runner.resume — resume does not
+	 * route through this.abortController.
+	 */
+	async resume(prompt: string, signal?: AbortSignal): Promise<void> {
+		if (!this._runner) {
+			throw new Error("Agent not configured for execution — missing runner");
+		}
+		const session = this.session;
+		if (!session) {
+			throw new Error("Agent not configured for resume — missing session");
+		}
+
+		this.resetForResume(Date.now());
+		this.attachObserver(subscribeAgentObserver(session, this, {
+			onCompact: (r, info) => this.observer?.onCompacted?.(r, info),
+		}));
+
+		try {
+			const responseText = await this._runner.resume(session, prompt, { signal });
+			this.markCompleted(responseText);
+		} catch (err) {
+			this.markError(err);
+		} finally {
+			this.releaseListeners();
+		}
+	}
+
 	/** Increment tool use count. Called by record-observer on tool_execution_end. */
 	incrementToolUses(): void {
 		this._toolUses++;
