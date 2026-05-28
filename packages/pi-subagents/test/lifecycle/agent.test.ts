@@ -841,6 +841,22 @@ describe("Agent.run() — worktree", () => {
 		expect(agent.error).toContain("Cannot run with isolation");
 		expect(onRunFinished).toHaveBeenCalledOnce();
 	});
+
+	it("releases the parent-signal listener when worktree setup fails", async () => {
+		const worktrees: WorktreeManager = {
+			create: vi.fn(() => undefined),
+			cleanup: vi.fn(() => ({ hasChanges: false })),
+			prune: vi.fn(),
+		};
+		const controller = new AbortController();
+		const removeSpy = vi.spyOn(controller.signal, "removeEventListener");
+		const agent = createRunnableAgent({ worktrees, isolation: "worktree", signal: controller.signal });
+		await agent.run();
+		expect(agent.status).toBe("error");
+		// The abort listener wired before setupWorktree must be detached on failure,
+		// not leaked onto the parent signal.
+		expect(removeSpy).toHaveBeenCalledWith("abort", expect.any(Function));
+	});
 });
 
 describe("Agent.run() — error handling", () => {

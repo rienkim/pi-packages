@@ -250,6 +250,7 @@ export class Agent {
 			this.setupWorktree();
 		} catch (err) {
 			this.markError(err);
+			this.releaseListeners();
 			this.observer?.onRunFinished?.(this);
 			return;
 		}
