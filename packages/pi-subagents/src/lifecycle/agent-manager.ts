@@ -14,6 +14,7 @@ import type { AgentRunner } from "#src/lifecycle/agent-runner";
 import type { ConcurrencyQueue } from "#src/lifecycle/concurrency-queue";
 import type { ParentSnapshot } from "#src/lifecycle/parent-snapshot";
 import type { WorktreeManager } from "#src/lifecycle/worktree";
+import { WorktreeIsolation } from "#src/lifecycle/worktree-isolation";
 
 import type { RunConfig } from "#src/runtime";
 import type { AgentInvocation, CompactionInfo, IsolationMode, ParentSessionInfo, SubagentType, ThinkingLevel } from "#src/types";
@@ -129,12 +130,14 @@ export class AgentManager {
       maxTurns: options.maxTurns,
       isolated: options.isolated,
       thinkingLevel: options.thinkingLevel,
-      isolation: options.isolation,
       parentSession: options.parentSession,
       signal: options.signal,
       // Shared deps
       runner: this.runner,
-      worktrees: this.worktrees,
+      worktree:
+        options.isolation === "worktree"
+          ? new WorktreeIsolation(this.worktrees, id)
+          : undefined,
       observer: this.buildObserver(options),
       getRunConfig: this.getRunConfig,
     });

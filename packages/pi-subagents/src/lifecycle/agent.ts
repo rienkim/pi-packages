@@ -11,7 +11,10 @@
  * Behavior (abort, steer buffering, worktree setup) lives on the agent
  * rather than on AgentManager — each agent manages its own lifecycle concerns.
  *
- * Phase-specific collaborators (execution, worktreeState, notification) are attached
+ * Worktree isolation is delegated to an optional WorktreeIsolation collaborator
+ * (set at construction when isolation is requested); its presence IS the mode.
+ *
+ * Phase-specific collaborators (execution, notification) are attached
  * after construction as lifecycle information becomes available.
  */
 
@@ -23,12 +26,11 @@ import type { ExecutionState } from "#src/lifecycle/execution-state";
 import type { ParentSnapshot } from "#src/lifecycle/parent-snapshot";
 import type { LifetimeUsage } from "#src/lifecycle/usage";
 import { addUsage } from "#src/lifecycle/usage";
-import type { WorktreeManager } from "#src/lifecycle/worktree";
-import { WorktreeState } from "#src/lifecycle/worktree-state";
+import type { WorktreeIsolation } from "#src/lifecycle/worktree-isolation";
 import { NotificationState } from "#src/observation/notification-state";
 import { subscribeAgentObserver } from "#src/observation/record-observer";
 import type { RunConfig } from "#src/runtime";
-import type { AgentInvocation, CompactionInfo, IsolationMode, ParentSessionInfo, SubagentType, ThinkingLevel } from "#src/types";
+import type { AgentInvocation, CompactionInfo, ParentSessionInfo, SubagentType, ThinkingLevel } from "#src/types";
 
 /** Per-agent lifecycle observer — created by AgentManager for each spawn. */
 export interface AgentLifecycleObserver {
@@ -67,7 +69,7 @@ export interface AgentInit {
 
 	// Shared deps (required for run(), optional for tests)
 	runner?: AgentRunner;
-	worktrees?: WorktreeManager;
+	worktree?: WorktreeIsolation;
 	observer?: AgentLifecycleObserver;
 	getRunConfig?: () => RunConfig;
 
@@ -78,7 +80,6 @@ export interface AgentInit {
 	maxTurns?: number;
 	isolated?: boolean;
 	thinkingLevel?: ThinkingLevel;
-	isolation?: IsolationMode;
 	parentSession?: ParentSessionInfo;
 	isBackground?: boolean;
 	signal?: AbortSignal;
@@ -124,7 +125,8 @@ export class Agent {
 
 	// Shared deps — optional (required for run())
 	private readonly _runner?: AgentRunner;
-	private readonly _worktrees?: WorktreeManager;
+	/** Worktree isolation collaborator — present only when isolation: "worktree". */
+	readonly worktree?: WorktreeIsolation;
 	readonly observer?: AgentLifecycleObserver;
 	private readonly _getRunConfig?: () => RunConfig;
 
@@ -135,36 +137,12 @@ export class Agent {
 	private readonly _maxTurns?: number;
 	private readonly _isolated?: boolean;
 	private readonly _thinkingLevel?: ThinkingLevel;
-	private readonly _isolation?: IsolationMode;
 	private readonly _parentSession?: ParentSessionInfo;
 	private readonly _signal?: AbortSignal;
 
 	// Phase-specific collaborators — each born complete when their info becomes available
 	execution?: ExecutionState;
-	worktreeState?: WorktreeState;
 	notification?: NotificationState;
-
-	/**
-	 * Create a git worktree for isolated execution, set worktreeState, and return the worktree path.
-	 * Returns undefined if isolation is not "worktree".
-	 * Throws if worktree creation fails (strict isolation).
-	 * Uses this._worktrees and this._isolation (set at construction).
-	 */
-	setupWorktree(): string | undefined {
-		if (this._isolation !== "worktree") return undefined;
-		if (!this._worktrees) {
-			throw new Error("Agent not configured for worktree isolation — missing worktrees dependency");
-		}
-		const wt = this._worktrees.create(this.id);
-		if (!wt) {
-			throw new Error(
-				'Cannot run with isolation: "worktree" — not a git repo, no commits yet, or `git worktree add` failed. ' +
-				'Initialize git and commit at least once, or omit `isolation`.',
-			);
-		}
-		this.worktreeState = new WorktreeState(wt);
-		return wt.path;
-	}
 
 	// Steer buffer — messages queued before the session is ready
 	private _pendingSteers: string[] = [];
@@ -205,7 +183,7 @@ export class Agent {
 
 		// Shared deps
 		this._runner = init.runner;
-		this._worktrees = init.worktrees;
+		this.worktree = init.worktree;
 		this.observer = init.observer;
 		this._getRunConfig = init.getRunConfig;
 
@@ -216,7 +194,6 @@ export class Agent {
 		this._maxTurns = init.maxTurns;
 		this._isolated = init.isolated;
 		this._thinkingLevel = init.thinkingLevel;
-		this._isolation = init.isolation;
 		this._parentSession = init.parentSession;
 		this._signal = init.signal;
 
@@ -247,7 +224,7 @@ export class Agent {
 		this.wireSignal(this._signal, () => this.abort());
 
 		try {
-			this.setupWorktree();
+			this.worktree?.setup();
 		} catch (err) {
 			this.markError(err);
 			this.releaseListeners();
@@ -259,7 +236,7 @@ export class Agent {
 		try {
 			const result = await this._runner.run(this._snapshot, this.type, this._prompt, {
 				context: {
-					cwd: this.worktreeState?.path,
+					cwd: this.worktree?.path,
 					parentSession: this._parentSession,
 				},
 				model: this._model,
@@ -465,11 +442,9 @@ export class Agent {
 		this.releaseListeners();
 
 		let finalResult = result.responseText;
-		if (this.worktreeState && this._worktrees) {
-			const wtResult = this.worktreeState.performCleanup(this._worktrees, this.description);
-			if (wtResult.hasChanges && wtResult.branch) {
-				finalResult += `\n\n---\nChanges saved to branch \`${wtResult.branch}\`. Merge with: \`git merge ${wtResult.branch}\``;
-			}
+		const wtResult = this.worktree?.cleanup(this.description);
+		if (wtResult?.hasChanges && wtResult.branch) {
+			finalResult += `\n\n---\nChanges saved to branch \`${wtResult.branch}\`. Merge with: \`git merge ${wtResult.branch}\``;
 		}
 
 		if (result.aborted) this.markAborted(finalResult);
@@ -489,11 +464,9 @@ export class Agent {
 		this.markError(err);
 		this.releaseListeners();
 
-		if (this.worktreeState && this._worktrees) {
-			try {
-				this.worktreeState.performCleanup(this._worktrees, this.description);
-			} catch (cleanupErr) { debugLog("cleanupWorktree on agent error", cleanupErr); }
-		}
+		try {
+			this.worktree?.cleanup(this.description);
+		} catch (cleanupErr) { debugLog("cleanupWorktree on agent error", cleanupErr); }
 
 		this.observer?.onRunFinished?.(this);
 	}

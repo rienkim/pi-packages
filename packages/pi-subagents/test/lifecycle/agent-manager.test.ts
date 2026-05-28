@@ -527,7 +527,7 @@ describe("AgentManager — dependency injection via options bag", () => {
     expect(worktrees.cleanup).toHaveBeenCalledOnce();
   });
 
-  it("sets record.worktreeState with path and branch from worktrees.create", async () => {
+  it("sets record.worktree path from worktrees.create", async () => {
     const worktrees = createMockWorktrees();
     ({ manager } = createManager({ worktrees }));
 
@@ -539,12 +539,11 @@ describe("AgentManager — dependency injection via options bag", () => {
     await manager.getRecord(id)!.promise;
 
     const record = manager.getRecord(id)!;
-    expect(record.worktreeState).toBeDefined();
-    expect(record.worktreeState!.path).toBe("/tmp/wt");
-    expect(record.worktreeState!.branch).toBe("pi-agent-x");
+    expect(record.worktree).toBeDefined();
+    expect(record.worktree!.path).toBe("/tmp/wt");
   });
 
-  it("records cleanup result on worktreeState after completion", async () => {
+  it("records cleanup result on worktree after completion", async () => {
     const worktrees = createMockWorktrees({ cleanupResult: { hasChanges: true, branch: "pi-agent-x" } });
     ({ manager } = createManager({ worktrees }));
 
@@ -556,7 +555,7 @@ describe("AgentManager — dependency injection via options bag", () => {
     await manager.getRecord(id)!.promise;
 
     const record = manager.getRecord(id)!;
-    expect(record.worktreeState!.cleanupResult).toEqual({ hasChanges: true, branch: "pi-agent-x" });
+    expect(record.worktree!.cleanupResult).toEqual({ hasChanges: true, branch: "pi-agent-x" });
   });
 });
 

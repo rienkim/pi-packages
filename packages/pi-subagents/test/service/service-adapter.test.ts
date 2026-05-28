@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { ParentSnapshot } from "#src/lifecycle/parent-snapshot";
-import { WorktreeState } from "#src/lifecycle/worktree-state";
+import type { WorktreeCleanupResult, WorktreeManager } from "#src/lifecycle/worktree";
+import { WorktreeIsolation } from "#src/lifecycle/worktree-isolation";
 import { NotificationState } from "#src/observation/notification-state";
 import type { SubagentsService } from "#src/service/service";
 import type { AgentManagerLike, ServiceRuntimeLike } from "#src/service/service-adapter";
@@ -9,6 +10,19 @@ import type { Agent, SessionContext } from "#src/types";
 import { createTestAgent } from "#test/helpers/make-agent";
 import { createMockSession, toAgentSession } from "#test/helpers/mock-session";
 import { STUB_SNAPSHOT } from "#test/helpers/stub-ctx";
+
+/** Build a WorktreeIsolation collaborator with a recorded cleanup result. */
+function setUpWorktree(cleanupResult: WorktreeCleanupResult): WorktreeIsolation {
+  const worktrees: WorktreeManager = {
+    create: vi.fn(() => ({ path: "/tmp/wt", branch: "agent/abc-123" })),
+    cleanup: vi.fn(() => cleanupResult),
+    prune: vi.fn(),
+  };
+  const worktree = new WorktreeIsolation(worktrees, "abc-123");
+  worktree.setup();
+  worktree.cleanup("Check stale TODOs");
+  return worktree;
+}
 
 describe("toSubagentRecord", () => {
   const baseRecord = (() => {
@@ -20,9 +34,8 @@ describe("toSubagentRecord", () => {
       toolUses: 5,
       lifetimeUsage: { input: 100, output: 200, cacheWrite: 50 },
       compactionCount: 1,
+      worktree: setUpWorktree({ hasChanges: true, branch: "agent/abc-123" }),
     });
-    r.worktreeState = new WorktreeState({ path: "/tmp/wt", branch: "agent/abc-123" });
-    r.worktreeState.recordCleanup({ hasChanges: true, branch: "agent/abc-123" });
     return r;
   })();
 
@@ -71,7 +84,7 @@ describe("toSubagentRecord", () => {
     expect(result).not.toHaveProperty("promise");
     expect(result).not.toHaveProperty("execution");
     expect(result).not.toHaveProperty("notification");
-    expect(result).not.toHaveProperty("worktreeState");
+    expect(result).not.toHaveProperty("worktree");
   });
 
   it("strips invocation and collaborator fields from the serialized output", () => {
@@ -80,7 +93,7 @@ describe("toSubagentRecord", () => {
     const result = toSubagentRecord(record);
     expect(result).not.toHaveProperty("notification");
     expect(result).not.toHaveProperty("execution");
-    expect(result).not.toHaveProperty("worktreeState");
+    expect(result).not.toHaveProperty("worktree");
     expect(result).not.toHaveProperty("invocation");
   });
 
