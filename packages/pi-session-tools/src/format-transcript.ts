@@ -5,10 +5,14 @@
  * while dropping noise (thinking content, image data, token usage, tool result bodies).
  */
 
-/** Minimal entry type — accepts both SessionEntry[] and ParsedEntry[]. */
+/**
+ * Minimal structural supertype for session entries.
+ * Accepts SDK SessionEntry[] without index-signature conflicts.
+ * Formatter functions cast to Record<string, unknown> internally where they
+ * need to access fields beyond `type`.
+ */
 export interface TranscriptEntry {
   type: string;
-  [key: string]: unknown;
 }
 
 interface ToolResultInfo {
@@ -96,7 +100,9 @@ function buildToolResultMap(
   const map = new Map<string, ToolResultInfo>();
   for (const entry of entries) {
     if (entry.type !== "message") continue;
-    const msg = entry.message as Record<string, unknown> | undefined;
+    const msg = (entry as unknown as Record<string, unknown>).message as
+      | Record<string, unknown>
+      | undefined;
     if (msg?.role !== "toolResult") continue;
     const toolCallId = typeof msg.toolCallId === "string" ? msg.toolCallId : "";
     if (!toolCallId) continue;
@@ -113,7 +119,9 @@ function collectAssistantToolCallIds(entries: TranscriptEntry[]): Set<string> {
   const ids = new Set<string>();
   for (const entry of entries) {
     if (entry.type !== "message") continue;
-    const msg = entry.message as Record<string, unknown> | undefined;
+    const msg = (entry as unknown as Record<string, unknown>).message as
+      | Record<string, unknown>
+      | undefined;
     if (msg?.role !== "assistant") continue;
     const content = msg.content;
     if (!Array.isArray(content)) continue;
@@ -167,28 +175,25 @@ const BRANCH_SUMMARY_SNIPPET_LENGTH = 100;
 
 /** Format a non-message session entry (compaction, model change, etc.). */
 function formatMetadataEntry(entry: TranscriptEntry): string | null {
+  // Cast once to access all non-type fields through runtime guards.
+  const e = entry as unknown as Record<string, unknown>;
   switch (entry.type) {
     case "compaction": {
-      const tokens =
-        typeof entry.tokensBefore === "number" ? entry.tokensBefore : 0;
+      const tokens = typeof e.tokensBefore === "number" ? e.tokensBefore : 0;
       return `[compaction] Context compacted (${tokens} tokens before)`;
     }
     case "model_change": {
-      const provider =
-        typeof entry.provider === "string" ? entry.provider : "unknown";
-      const modelId =
-        typeof entry.modelId === "string" ? entry.modelId : "unknown";
+      const provider = typeof e.provider === "string" ? e.provider : "unknown";
+      const modelId = typeof e.modelId === "string" ? e.modelId : "unknown";
       return `[model change] \u2192 ${provider}/${modelId}`;
     }
     case "thinking_level_change": {
       const level =
-        typeof entry.thinkingLevel === "string"
-          ? entry.thinkingLevel
-          : "unknown";
+        typeof e.thinkingLevel === "string" ? e.thinkingLevel : "unknown";
       return `[thinking] \u2192 ${level}`;
     }
     case "branch_summary": {
-      const summary = typeof entry.summary === "string" ? entry.summary : "";
+      const summary = typeof e.summary === "string" ? e.summary : "";
       const snippet = summary.slice(0, BRANCH_SUMMARY_SNIPPET_LENGTH);
       const ellipsis =
         summary.length > BRANCH_SUMMARY_SNIPPET_LENGTH ? "..." : "";
@@ -233,7 +238,9 @@ export function formatTranscript(entries: TranscriptEntry[]): string {
       continue;
     }
 
-    const message = entry.message as Record<string, unknown> | undefined;
+    const message = (entry as unknown as Record<string, unknown>).message as
+      | Record<string, unknown>
+      | undefined;
     if (!message || typeof message !== "object") continue;
 
     const role = message.role;

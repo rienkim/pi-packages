@@ -14,6 +14,7 @@ import {
   type ExtensionAPI,
   type ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
+import { formatTranscript } from "./format-transcript.js";
 import {
   deriveParentSessionFile,
   readParentSessionEntries,
@@ -79,8 +80,11 @@ export default function sessionTools(pi: ExtensionAPI): void {
       label: "Read Session",
       description:
         "Read the current session's raw entries from the session file. " +
-        "Returns JSONL entries that survive context compaction — use this to inspect " +
-        "the full session history including messages, model changes, compaction events, and custom entries.",
+        "Returns a structured transcript that survives context compaction — use this to inspect " +
+        "the full session history including messages, model changes, compaction events, and custom entries. " +
+        "The transcript format shows numbered user/assistant turns, one-line tool call summaries with " +
+        "correlated results, and metadata events (compaction, model changes). " +
+        "Tool result bodies, thinking content, and image data are omitted.",
       parameters: Type.Object({
         types: Type.Optional(
           Type.Array(
@@ -118,7 +122,7 @@ export default function sessionTools(pi: ExtensionAPI): void {
           entries = entries.slice(-params.limit);
         }
         return {
-          content: [{ type: "text", text: JSON.stringify(entries, null, 2) }],
+          content: [{ type: "text", text: formatTranscript(entries) }],
           details: undefined,
         };
       },
@@ -132,6 +136,8 @@ export default function sessionTools(pi: ExtensionAPI): void {
       description:
         "Read the parent session's entries when running inside a subagent. " +
         "Derives the parent session file from the subagent directory layout. " +
+        "Returns a structured transcript with numbered user/assistant turns, one-line tool call summaries, " +
+        "and metadata events. Tool result bodies, thinking content, and image data are omitted. " +
         "Returns an error if not running in a subagent context.",
       parameters: Type.Object({
         types: Type.Optional(
@@ -198,7 +204,7 @@ export default function sessionTools(pi: ExtensionAPI): void {
         }
 
         return {
-          content: [{ type: "text", text: JSON.stringify(entries, null, 2) }],
+          content: [{ type: "text", text: formatTranscript(entries) }],
           details: undefined,
         };
       },

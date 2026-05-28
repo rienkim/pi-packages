@@ -85,7 +85,7 @@ describe("read_parent_session tool", () => {
     expect(text).toContain("Parent session file not found");
   });
 
-  it("reads and returns parent session entries", async () => {
+  it("reads and returns parent session entries as transcript", async () => {
     const { default: sessionTools } = await import("#src/index");
     const tools = captureTools(sessionTools);
     const tool = tools.get("read_parent_session")!;
@@ -104,7 +104,7 @@ describe("read_parent_session tool", () => {
         id: "1",
         parentId: null,
         timestamp: "2026-01-01T00:00:01Z",
-        message: { role: "user", content: "hello" },
+        message: { role: "user", content: "hello", timestamp: 1 },
       }),
       JSON.stringify({
         type: "message",
@@ -126,14 +126,13 @@ describe("read_parent_session tool", () => {
     );
     const result = await tool.execute("tc1", {}, undefined, undefined, ctx);
     const text = (result as { content: { text: string }[] }).content[0].text;
-    const parsed = JSON.parse(text);
-    // Should return only session entries (not the header)
-    expect(parsed).toHaveLength(2);
-    expect(parsed[0].type).toBe("message");
-    expect(parsed[1].type).toBe("message");
+    // Session header is stripped; user and assistant turns are formatted
+    expect(text).toBe(
+      "1. user\nhello\n\n---\n\n2. assistant [anthropic/claude-sonnet-4-20250514]\nhi",
+    );
   });
 
-  it("supports type filtering on parent entries", async () => {
+  it("supports type filtering on parent entries before formatting", async () => {
     const { default: sessionTools } = await import("#src/index");
     const tools = captureTools(sessionTools);
     const tool = tools.get("read_parent_session")!;
@@ -152,7 +151,7 @@ describe("read_parent_session tool", () => {
         id: "1",
         parentId: null,
         timestamp: "t1",
-        message: { role: "user", content: "hi" },
+        message: { role: "user", content: "hi", timestamp: 1 },
       }),
       JSON.stringify({
         type: "model_change",
@@ -174,8 +173,9 @@ describe("read_parent_session tool", () => {
       ctx,
     );
     const text = (result as { content: { text: string }[] }).content[0].text;
-    const parsed = JSON.parse(text);
-    expect(parsed).toHaveLength(1);
-    expect(parsed[0].type).toBe("model_change");
+    // Only model_change entry passes the filter
+    expect(text).toBe(
+      "[model change] \u2192 anthropic/claude-sonnet-4-20250514",
+    );
   });
 });
