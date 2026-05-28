@@ -98,16 +98,39 @@ describe("describeBashExternalDirectoryGate", () => {
     expect(patterns.length).toBeGreaterThan(0);
   });
 
-  it("uses config-level checkPermission for the policy state", async () => {
+  it("returns GateBypass when all external paths are config-level allowed", async () => {
+    // Config-level allow (source: "special") should suppress the prompt,
+    // not just session-level allow. This was the bug: source !== "session"
+    // kept config-allowed paths in the uncovered set.
     const checkPermission = vi
       .fn()
       .mockImplementation(
         (_surface: string, input: Record<string, unknown>) => {
-          // Path-specific check returns session for coverage filtering
           if (input.path)
             return makeCheckResult("allow", { source: "special" });
-          // Config-level check (no path) returns deny
-          return makeCheckResult("deny");
+          return makeCheckResult("ask");
+        },
+      );
+    const result = await describeBashExternalDirectoryGate(
+      makeTcc(),
+      checkPermission,
+      vi.fn().mockReturnValue([]),
+    );
+    expect(result).not.toBeNull();
+    expect(isGateBypass(result)).toBe(true);
+  });
+
+  it("uses worst-check state from uncovered paths for preCheck (config deny > catch-all ask)", async () => {
+    // The path-less extCheck used to always return the "*" catch-all (ask),
+    // silently downgrading a config-level deny to ask. After the fix, the
+    // descriptor's preCheck is derived from the actual path check result.
+    const checkPermission = vi
+      .fn()
+      .mockImplementation(
+        (_surface: string, input: Record<string, unknown>) => {
+          if (input.path) return makeCheckResult("deny", { source: "special" });
+          // Path-less catch-all returns ask — should NOT be used as preCheck.
+          return makeCheckResult("ask");
         },
       );
     const result = await describeBashExternalDirectoryGate(
@@ -116,8 +139,6 @@ describe("describeBashExternalDirectoryGate", () => {
       vi.fn().mockReturnValue([]),
     );
     expect(isGateDescriptor(result)).toBe(true);
-    // The descriptor should carry the deny state from the config-level check
-    // (it will be checked as preCheck by the runner)
     const desc = result as GateDescriptor;
     expect(desc.preCheck?.state).toBe("deny");
   });

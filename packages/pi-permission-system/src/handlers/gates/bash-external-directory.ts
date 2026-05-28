@@ -21,7 +21,7 @@ type CheckPermissionFn = (
  * Extracts paths from a bash command and checks whether any reference
  * directories outside the working directory. Returns `null` when the gate
  * does not apply (tool is not bash, no CWD, or no external paths found).
- * Returns a `GateBypass` when all paths are session-covered.
+ * Returns a `GateBypass` when all paths are allowed (by config or session rule).
  * Returns a `GateDescriptor` with multi-pattern sessionApproval for uncovered paths.
  */
 export async function describeBashExternalDirectoryGate(
@@ -41,15 +41,26 @@ export async function describeBashExternalDirectoryGate(
   if (externalPaths.length === 0) return null;
 
   const bashSessionRules = getSessionRuleset();
-  const uncoveredPaths = externalPaths.filter(
-    (p) =>
-      checkPermission(
-        "external_directory",
-        { path: p },
-        tcc.agentName ?? undefined,
-        bashSessionRules,
-      ).source !== "session",
-  );
+
+  // Collect paths whose resolved state is not already "allow".
+  // Checking state (not source) ensures config-level allow rules (source: "special")
+  // suppress the prompt just as session-level allow rules (source: "session") do.
+  const uncoveredEntries: Array<{
+    path: string;
+    check: PermissionCheckResult;
+  }> = [];
+  for (const p of externalPaths) {
+    const check = checkPermission(
+      "external_directory",
+      { path: p },
+      tcc.agentName ?? undefined,
+      bashSessionRules,
+    );
+    if (check.state !== "allow") {
+      uncoveredEntries.push({ path: p, check });
+    }
+  }
+  const uncoveredPaths = uncoveredEntries.map(({ path }) => path);
 
   if (uncoveredPaths.length === 0) {
     return {
@@ -69,11 +80,12 @@ export async function describeBashExternalDirectoryGate(
     };
   }
 
-  // Get the config-level policy (no path → no session check).
-  const extCheck = checkPermission(
-    "external_directory",
-    {},
-    tcc.agentName ?? undefined,
+  // Use the most restrictive check among uncovered paths as the pre-check result.
+  // This ensures a config-level "deny" rule is not downgraded to "ask" by the
+  // generic "*" catch-all that the old path-less checkPermission call returned.
+  const worstCheck = uncoveredEntries.reduce<PermissionCheckResult>(
+    (worst, { check }) => (check.state === "deny" ? check : worst),
+    uncoveredEntries[0].check,
   );
 
   const bashExtMessage = formatBashExternalDirectoryAskPrompt(
@@ -120,6 +132,6 @@ export async function describeBashExternalDirectoryGate(
       surface: "external_directory",
       value: command,
     },
-    preCheck: extCheck,
+    preCheck: worstCheck,
   };
 }
