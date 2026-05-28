@@ -341,13 +341,11 @@ export class Agent {
 		this._result = undefined;
 		this._error = undefined;
 		this.releaseListeners();
-		this._onRunFinished = undefined;
 	}
 
 	// --- Per-run listener state (released on completion or resume reset) ---
 	private _unsub?: () => void;
 	private _detachFn?: () => void;
-	private _onRunFinished?: () => void;
 
 	/** Wire a parent AbortSignal so it stops this agent when fired. */
 	wireSignal(signal: AbortSignal | undefined, onAbort: () => void): void {
@@ -370,25 +368,13 @@ export class Agent {
 		this._detachFn = undefined;
 	}
 
-	/** Set the callback fired once when the run finishes (for concurrency drain). */
-	setOnRunFinished(fn: (() => void) | undefined): void {
-		this._onRunFinished = fn;
-	}
-
-	/** Fire the onRunFinished callback at most once. */
-	private fireOnRunFinished(): void {
-		const fn = this._onRunFinished;
-		this._onRunFinished = undefined;
-		fn?.();
-	}
-
-	/** Complete a run: release listeners, worktree cleanup, status transition, execution update, fire onRunFinished. */
-	completeRun(result: RunResult, worktrees: WorktreeManager): void {
+	/** Complete a run: release listeners, worktree cleanup, status transition, execution update, notify observer. */
+	completeRun(result: RunResult): void {
 		this.releaseListeners();
 
 		let finalResult = result.responseText;
-		if (this.worktreeState) {
-			const wtResult = this.worktreeState.performCleanup(worktrees, this.description);
+		if (this.worktreeState && this._worktrees) {
+			const wtResult = this.worktreeState.performCleanup(this._worktrees, this.description);
 			if (wtResult.hasChanges && wtResult.branch) {
 				finalResult += `\n\n---\nChanges saved to branch \`${wtResult.branch}\`. Merge with: \`git merge ${wtResult.branch}\``;
 			}
@@ -403,20 +389,20 @@ export class Agent {
 			outputFile: result.sessionFile ?? this.execution?.outputFile,
 		};
 
-		this.fireOnRunFinished();
+		this.observer?.onRunFinished?.(this);
 	}
 
-	/** Fail a run: mark error, release listeners, best-effort worktree cleanup, fire onRunFinished. */
-	failRun(err: unknown, worktrees: WorktreeManager): void {
+	/** Fail a run: mark error, release listeners, best-effort worktree cleanup, notify observer. */
+	failRun(err: unknown): void {
 		this.markError(err);
 		this.releaseListeners();
 
-		if (this.worktreeState) {
+		if (this.worktreeState && this._worktrees) {
 			try {
-				this.worktreeState.performCleanup(worktrees, this.description);
+				this.worktreeState.performCleanup(this._worktrees, this.description);
 			} catch (cleanupErr) { debugLog("cleanupWorktree on agent error", cleanupErr); }
 		}
 
-		this.fireOnRunFinished();
+		this.observer?.onRunFinished?.(this);
 	}
 }

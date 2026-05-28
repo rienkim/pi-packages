@@ -132,6 +132,11 @@ export class AgentManager {
       parentSession: options.parentSession,
       isolation: options.isolation,
       worktrees: this.worktrees,
+      observer: {
+        onRunFinished: options.isBackground
+          ? () => this.finalizeBackgroundRun(record)
+          : undefined,
+      },
     });
     this.agents.set(id, record);
 
@@ -165,9 +170,6 @@ export class AgentManager {
     if (options.isBackground) this.runningBackground++;
     this.observer?.onAgentStarted(record);
 
-    record.setOnRunFinished(
-      options.isBackground ? () => this.finalizeBackgroundRun(record) : undefined,
-    );
     record.wireSignal(options.signal, () => this.abort(id));
 
     const runConfig = this.getRunConfig?.();
@@ -197,9 +199,9 @@ export class AgentManager {
           options.onSessionCreated?.(session, record);
         },
       });
-      record.completeRun(result, this.worktrees);
+      record.completeRun(result);
     } catch (err) {
-      record.failRun(err, this.worktrees);
+      record.failRun(err);
     }
   }
 
