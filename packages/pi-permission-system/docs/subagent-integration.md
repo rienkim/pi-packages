@@ -3,7 +3,10 @@
 ## Native integration with `@gotgenes/pi-subagents`
 
 [`@gotgenes/pi-subagents`](https://github.com/gotgenes/pi-subagents) is the only subagent extension with native permission-system integration.
-It registers every in-process child session with the `SubagentSessionRegistry` before `bindExtensions()` fires, enabling:
+It publishes a child-execution lifecycle on `pi.events`; this package subscribes (see `src/subagent-lifecycle-events.ts`) and registers every in-process child session with the `SubagentSessionRegistry` on the `subagents:child:session-created` event — emitted before `bindExtensions()` fires — and unregisters it on `subagents:child:disposed`.
+Because the event bus dispatches synchronously, the synchronous registration completes before binding proceeds.
+This inverts the former dependency direction: the core no longer looks up this package's service (ADR 0002 / pi-subagents #261).
+The integration enables:
 
 1. **Deterministic child detection** — `isSubagentExecutionContext()` hits the registry on the first check, no env-var or filesystem heuristics needed.
 2. **Per-agent policy enforcement** — the permission system's `before_agent_start` handler resolves the agent name from the `<active_agent>` system-prompt tag and applies per-agent `permission:` frontmatter overrides.
@@ -11,9 +14,9 @@ It registers every in-process child session with the `SubagentSessionRegistry` b
    The parent approves or denies, and the child resumes.
 
 No configuration is required — the integration is automatic when both extensions are installed.
-When `@gotgenes/pi-permission-system` is not installed, `@gotgenes/pi-subagents` degrades gracefully (registration calls are silent no-ops).
+When `@gotgenes/pi-permission-system` is not installed, `@gotgenes/pi-subagents` emits its lifecycle events with no subscriber — a harmless no-op.
 
-See [Service Accessor — registerSubagentSession](cross-extension-api.md#registersubagentsession--unregistersubagentsession) for the call pattern used by the integration.
+The `registerSubagentSession` / `unregisterSubagentSession` service methods documented in [Service Accessor](cross-extension-api.md#registersubagentsession--unregistersubagentsession) remain available for other (e.g. out-of-process) callers; `@gotgenes/pi-subagents` no longer uses them, and their removal is tracked in #267.
 
 ## Permission Forwarding
 

@@ -274,7 +274,7 @@ src/
 │   ├── concurrency-queue.ts        background agent scheduling with configurable concurrency limit
 │   ├── parent-snapshot.ts          immutable spawn-time parent state
 │   ├── execution-state.ts          session/output phase state
-│   ├── permission-bridge.ts        optional bridge to pi-permission-system registry
+│   ├── child-lifecycle.ts          child-execution lifecycle event publisher
 │   ├── worktree.ts                 git worktree isolation
 │   ├── worktree-isolation.ts       worktree lifecycle collaborator
 │   └── usage.ts                    token usage tracking
@@ -352,8 +352,9 @@ They declare this package as an optional peer dependency and use dynamic import 
 - `AgentManager` — spawn, abort, resume, collection management, observer wiring.
 - `ConcurrencyQueue` — background agent scheduling with configurable concurrency limit.
 - `agent-runner` — session creation, turn loop, extension binding.
-- `permission-bridge` — optional cross-extension bridge to `@gotgenes/pi-permission-system`; registers each child session with `SubagentSessionRegistry` before `bindExtensions()` so the permission system detects in-process children deterministically.
-  Scheduled for removal in Phase 16 — replaced by lifecycle events that consumers listen for.
+- `child-lifecycle` — publishes the child-execution lifecycle (`spawning`, `session-created` before `bindExtensions()`, `completed`, `disposed`) on `pi.events`.
+  Reactive consumers subscribe: `@gotgenes/pi-permission-system` registers each child session on `session-created` and unregisters it on `disposed`.
+  This replaced the former outbound `permission-bridge` (#261, ADR 0002) — the core no longer looks up a named consumer.
 - `session-config` — pure configuration assembler (extracted from `agent-runner`).
 - `SubagentRuntime` — session-scoped state bag with methods.
 - `ParentSnapshot` — immutable snapshot of parent session state, captured once at spawn time.
@@ -495,8 +496,6 @@ Latent extensibility is the deliverable; a vacant hook is not.
 
 - **Tool policy** (`disallowed_tools`) — access control belongs in pi-permission-system's `permission:` frontmatter.
 - **Extension filtering** (`extensions: string[]` allowlist) — tool visibility is pi-permission-system's job.
-- **Permission bridge** (`permission-bridge.ts`) — outbound coupling to pi-permission-system.
-  The core stops reaching out to `Symbol.for("@gotgenes/pi-permission-system:service")` and instead emits lifecycle events the permission system subscribes to.
 - **Worktree isolation** (`worktree.ts`, `worktree-isolation.ts`, `GitWorktreeManager`, the `isolation: "worktree"` spawn mode) — environment policy, not core.
   Git worktrees are one *strategy* for choosing the child's working directory; containers, throwaway tmpdirs, and remote sandboxes are others.
   These move to `@gotgenes/pi-subagents-worktrees`, the first consumer of the workspace provider seam.
@@ -740,14 +739,17 @@ The structural win the collaborator plan chased — a born-complete child execut
 
 ### Steps
 
-#### Step 1: Child-execution lifecycle events; retire permission-bridge — [#261]
+#### Step 1: Child-execution lifecycle events; retire permission-bridge — [#261] ✅ Delivered
 
-Emit awaited, ordered child-execution events (`spawning`, `session-created` before `bindExtensions()`, `completed`, `disposed`) carrying child identity (session directory, agent name, parent session id).
+Emit ordered child-execution events (`spawning`, `session-created` before `bindExtensions()`, `completed`, `disposed`) carrying child identity (session directory, agent name, parent session id).
 Migrate `@gotgenes/pi-permission-system` to subscribe to `session-created`/`disposed` for registration instead of being looked up by the core; delete `permission-bridge.ts`.
 
 - Cross-package: pi-subagents (emit + remove bridge) and pi-permission-system (subscribe).
-- Investigation (blocking): confirm Pi's event model supports an awaited, ordered emit at the pre-bind instant so registration lands before the child's first permission check; if not, define the minimal hook that does.
+- Investigation (resolved): `pi.events` is a Node `EventEmitter`, so `emit()` dispatches listeners synchronously on the same call stack — a synchronous subscriber completes before `emit()` returns.
+  Emitting `session-created` immediately before `bindExtensions()` therefore guarantees the registry entry lands pre-bind, with no new SDK hook.
+  The synchronous-handler constraint is encoded as a real-bus test in pi-permission-system.
 - Outcome: the core stops reaching out to a named consumer; permission detection rides events.
+- Deferred: removing the now-caller-less `registerSubagentSession`/`unregisterSubagentSession` from `PermissionsService` → #267; registry-detected resume ("executing now" → "exists" semantics) → #265.
 
 #### Step 2: Define the `WorkspaceProvider` seam — [#262]
 
