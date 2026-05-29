@@ -719,6 +719,14 @@ See [phase-14-strip-policy.md](history/phase-14-strip-policy.md) for details.
 [#239]: https://github.com/gotgenes/pi-packages/issues/239
 [#242]: https://github.com/gotgenes/pi-packages/issues/242
 
+## Phase 15 (complete)
+
+Phase 15 evolved `Agent` from a passive state machine (`AgentRecord`) into an object that owns its entire execution lifecycle.
+Before Phase 15, `AgentManager` orchestrated everything: calling the runner, handling session creation, wiring observers, and cleaning up worktrees — reaching into Agent 10+ times across `spawn()` and `startAgent()`.
+After Phase 15, Agent is born complete with all dependencies and configuration, owns `run()` and `resume()`, and manages its own observer and worktree lifecycle.
+All six steps are closed: [#227], [#228], [#231], [#229], [#230], [#232].
+See [phase-15-domain-model-evolution.md](history/phase-15-domain-model-evolution.md) for details.
+
 ## Improvement roadmap (Phase 16 — invert dependencies: extensions on a minimal core)
 
 Phase 16 reclaims its original intent — invert the core's outbound dependencies — and extends it: worktree isolation joins permissions as an *extension* on a minimal core, leaving pi-subagents a pure child-session orchestrator.
@@ -895,4 +903,14 @@ The upstream test suite is run periodically as a regression canary for the agent
 [#217]: https://github.com/gotgenes/pi-packages/issues/217
 [#218]: https://github.com/gotgenes/pi-packages/issues/218
 [#219]: https://github.com/gotgenes/pi-packages/issues/219
+[#227]: https://github.com/gotgenes/pi-packages/issues/227
+[#228]: https://github.com/gotgenes/pi-packages/issues/228
+[#229]: https://github.com/gotgenes/pi-packages/issues/229
+[#230]: https://github.com/gotgenes/pi-packages/issues/230
 [#231]: https://github.com/gotgenes/pi-packages/issues/231
+[#232]: https://github.com/gotgenes/pi-packages/issues/232
+[#261]: https://github.com/gotgenes/pi-packages/issues/261
+[#262]: https://github.com/gotgenes/pi-packages/issues/262
+[#263]: https://github.com/gotgenes/pi-packages/issues/263
+[#264]: https://github.com/gotgenes/pi-packages/issues/264
+[#265]: https://github.com/gotgenes/pi-packages/issues/265
