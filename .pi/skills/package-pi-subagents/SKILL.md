@@ -45,7 +45,8 @@ The key phases are:
 
 - **Phase 14** — Strip policy from core: remove `disallowed_tools`, `extensions` filtering, collapse `filterActiveTools` (#237, #238, #239). ✅ Complete
 - **Phase 15** — Domain model evolution: `AgentRecord` → `Agent` with behavior, async `startAgent`, observer pattern, `ConcurrencyQueue` (#227–#232).
-- **Phase 16** — Invert dependencies: remove `permission-bridge.ts`, emit child session lifecycle events, dissolve `isolated`/`extensions: false`.
+- **Phase 16** — Invert dependencies (extensions on a minimal core, ADR 0002): emit child-session lifecycle events and retire `permission-bridge.ts` (#261); add the `WorkspaceProvider` seam (#262); extract worktrees to `@gotgenes/pi-subagents-worktrees` (#263, supersedes #256); remove `isolated`/`extensions: false`/`noSkills` (#264); born-complete child execution, dissolve the runner (#265).
+  The earlier "agent collaborator architecture" framing was abandoned.
 - **Phase 17** — Extract UI to a separate package.
 
 ## Code Style
