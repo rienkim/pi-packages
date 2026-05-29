@@ -27,6 +27,7 @@ import {
 } from "./service";
 import { createSessionLogger } from "./session-logger";
 import { isSubagentExecutionContext } from "./subagent-context";
+import { subscribeSubagentLifecycle } from "./subagent-lifecycle-events";
 import { SubagentSessionRegistry } from "./subagent-registry";
 import {
   canResolveAskPermissionRequest,
@@ -129,6 +130,13 @@ export default function piPermissionSystemExtension(pi: ExtensionAPI): void {
   };
   publishPermissionsService(permissionsService);
 
+  // Subscribe to @gotgenes/pi-subagents' child lifecycle events so child
+  // sessions register/unregister without the core calling us (ADR 0002).
+  const unsubSubagentLifecycle = subscribeSubagentLifecycle(
+    pi.events,
+    subagentRegistry,
+  );
+
   emitReadyEvent(pi.events);
 
   const toolRegistry = {
@@ -139,6 +147,7 @@ export default function piPermissionSystemExtension(pi: ExtensionAPI): void {
   const lifecycle = new SessionLifecycleHandler(session, () => {
     rpcHandles.unsubCheck();
     rpcHandles.unsubPrompt();
+    unsubSubagentLifecycle();
     unpublishPermissionsService();
   });
   const agentPrep = new AgentPrepHandler(session, toolRegistry);
