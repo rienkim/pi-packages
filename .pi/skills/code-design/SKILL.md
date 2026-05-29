@@ -113,6 +113,7 @@ Sandi Metz: "duplication is far cheaper than the wrong abstraction."
 
 - Avoid `any` unless absolutely necessary.
 - Use standard top-level imports only.
+- Within a package, import sibling modules via the `#src/` / `#test/` path aliases, not relative paths (`../src/...`) — eslint enforces this and will rewrite violations.
 - Keep modules focused and composable (one concern per file).
 - Prefer explicit configuration over hidden behavior.
 - Business logic should be pure functions wherever possible — keep IO at the edges.

@@ -68,3 +68,50 @@ Full suite (3065 tests), `check`, `lint`, and `fallow dead-code` all green.
   One non-blocking finding — the `package-pi-permission-system` skill's "Upcoming: event-based subagent integration" section was stale (the integration is now delivered).
   Addressed in a follow-up `docs:` commit (`6893301a`) updating it to the delivered state plus the synchronous-handler constraint and the #267 deferral note.
   All deterministic checks (`check`, `lint`, `test`, `fallow`), acceptance criteria, conventional commits, code design, test artifacts, and Mermaid diagrams passed.
+
+## Stage: Final Retrospective (2026-05-28T18:30:00Z)
+
+### Session summary
+
+Shipped Phase 16, Step 1 of ADR 0002 across three stages (plan, TDD, ship) with no rework and no failed CI: the core publishes a `subagents:child:*` lifecycle, `@gotgenes/pi-permission-system` subscribes, and `permission-bridge.ts` is gone.
+Released `@gotgenes/pi-subagents` v11.4.0 and `@gotgenes/pi-permission-system` v7.4.0; closed #261; opened #267 and amended #265 for deferred work.
+The session was notably clean — friction was low-impact and self-corrected.
+
+### Observations
+
+#### What went well
+
+1. **Read the SDK source to resolve a "blocking investigation" instead of speculating.**
+   The issue flagged an unknown — can `pi.events` emit an awaited, ordered event pre-`bindExtensions`?
+   Reading `@earendil-works/pi-coding-agent/dist/core/event-bus.js` showed it is a Node `EventEmitter` (synchronous dispatch), which settled the design (no new SDK hook needed) and turned the unknown into a tested invariant.
+2. **Multi-round `ask_user` dialogue converged on a better answer.**
+   The resume-detection question took two rounds because the user asked "tell me more about why we'd re-register" rather than picking an option.
+   That redirect surfaced the real distinction (registry "executing now" vs. "exists") and produced a cleaner outcome: defer to #265 with an added acceptance criterion, rather than over-scoping #261.
+3. **Incremental verification throughout TDD.**
+   `pnpm vitest run <file>` after each red/green, `pnpm run check` immediately after the shared-`RunnerDeps` interface change (step 3), and the full `check` + `lint` + `test` + `fallow` gate at the end — no end-loaded verification gap.
+4. **Real-bus invariant test.**
+   Testing `subscribeSubagentLifecycle` against the real `createEventBus()` (not just a fake) encodes the synchronous-dispatch ordering guarantee, so a future `await` creeping into the handler fails loudly.
+
+#### What caused friction (agent side)
+
+1. `missing-context` — the plan said step 2 would "add a `createRunnerDeps` factory," but the factory already existed (and `concrete-agent-runner.test.ts` already used it); the work was an *extension*, and only 2 of the assumed 3 test files needed migration.
+   Impact: cosmetic plan inaccuracy, no rework — the step's intent held.
+2. `missing-context` — the new pi-permission-system test imported package modules via relative paths (`../src/...`) instead of the `#src/` / `#test/` path aliases the project enforces; the eslint pre-commit hook rewrote them.
+   Impact: one failed-commit-then-recommit cycle (~30 s), self-identified via the hook, no rework.
+
+#### What caused friction (user side)
+
+1. None material.
+   The user's mid-planning clarifying question ("tell me more about why") was a strength, not friction — it redirected before a decision was locked in.
+   Opportunity (framing, not criticism): the agent could have led the first resume `ask_user` with the mechanism explanation (registry semantics) before presenting options, collapsing two rounds into one.
+
+### Diagnostic details
+
+- **Model-performance correlation** — the one subagent dispatch (`pre-completion-reviewer`) ran on `claude-sonnet-4-6-20260526`; appropriate for read-only deterministic-check + judgment review (373 s, 19 tool calls).
+  No mismatch.
+- **Escalation-delay / unused-tool / feedback-loop lenses** — nothing notable: no `rabbit-hole` sequences, no repeated-error streaks, and verification was incremental (see win 3).
+
+### Changes made
+
+1. `.pi/skills/code-design/SKILL.md` — added a one-line rule under TypeScript conventions: import sibling modules via the `#src/` / `#test/` path aliases, not relative paths (eslint enforces and rewrites).
+   Addresses agent-side friction 2.
