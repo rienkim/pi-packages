@@ -75,8 +75,40 @@ pi
 This gives the agent access to:
 
 - `.pi/settings.json` — loads all packages from local source (with npm versions disabled)
-- `.pi/prompts/` — slash commands (`/plan-issue`, `/tdd-plan`, `/ship-issue`, etc.)
+- `.pi/prompts/` — slash commands (`/plan-improvements`, `/plan-issue`, `/tdd-plan`, `/ship-issue`, etc.)
 - Root `AGENTS.md` — monorepo-wide conventions
+
+#### Developer workflow
+
+Development is driven by slash commands.
+A discovery command, `/plan-improvements`, updates a package's architecture document and opens GitHub Issues for the work it identifies.
+Each issue is then taken through a manual loop until it ships.
+
+```mermaid
+flowchart LR
+    PI["/plan-improvements"] -->|architecture doc + GitHub Issues| Plan
+
+    subgraph Loop["Per-issue loop"]
+        direction LR
+        Plan["/plan-issue #N"] --> Kind{code or docs?}
+        Kind -->|code| TDD["/tdd-plan"]
+        Kind -->|docs / config| Build["/build-plan"]
+        TDD --> Ship["/ship-issue #N"]
+        Build --> Ship["/ship-issue #N"]
+        Ship --> Retro["/retro"]
+    end
+```
+
+| Stage            | Command                      | What happens                                                                                              |
+| ---------------- | ---------------------------- | --------------------------------------------------------------------------------------------------------- |
+| 1. Discover      | `/plan-improvements`         | Updates a package's architecture document and creates GitHub Issues outlining the implementation work.    |
+| 2. Plan          | `/plan-issue #N`             | Reads the issue, explores the codebase, produces a numbered plan, and commits it.                         |
+| 3. Implement     | `/tdd-plan` or `/build-plan` | Executes the plan — TDD for code changes, build for docs/config. A pre-completion review runs at the end. |
+| 4. Ship          | `/ship-issue #N`             | Pushes, verifies CI, closes the issue, and merges the release-please PR.                                  |
+| 5. Retrospective | `/retro`                     | Reviews the session(s) for workflow improvements and persists retro notes.                                |
+
+Each issue repeats stages 2–5.
+Every stage can run in its own session; the prompt templates set a stage-encoded session name and write a `## Stage:` entry to a `docs/retro/NNNN-<slug>.md` file that bridges context across sessions.
 
 Package-specific context (architecture, priorities, testing strategy) lives in skills.
 Load the relevant skill before working on a package:
