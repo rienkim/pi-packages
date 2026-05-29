@@ -18,6 +18,9 @@
     },
     "packages/pi-subagents": {
       "component": "pi-subagents"
+    },
+    "packages/pi-subagents-worktrees": {
+      "component": "pi-subagents-worktrees"
     }
   },
   "exclude-paths": [
@@ -38,7 +41,9 @@
     "packages/pi-subagents/docs/architecture",
     "packages/pi-subagents/docs/decisions",
     "packages/pi-subagents/docs/plans",
-    "packages/pi-subagents/docs/retro"
+    "packages/pi-subagents/docs/retro",
+    "packages/pi-subagents-worktrees/docs/plans",
+    "packages/pi-subagents-worktrees/docs/retro"
   ],
   "include-v-in-tag": true,
   "include-component-in-tag": true,
