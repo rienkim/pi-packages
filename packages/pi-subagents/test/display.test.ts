@@ -13,7 +13,6 @@ describe("getDisplayName", () => {
         name: "my-agent",
         displayName: "My Agent",
         description: "test",
-        extensions: false,
         skills: false,
         systemPrompt: "",
         promptMode: "replace",
@@ -29,7 +28,6 @@ describe("getDisplayName", () => {
       {
         name: "my-agent",
         description: "test",
-        extensions: false,
         skills: false,
         systemPrompt: "",
         promptMode: "replace",
@@ -55,7 +53,6 @@ describe("getPromptModeLabel", () => {
       {
         name: "twin-agent",
         description: "test",
-        extensions: false,
         skills: false,
         systemPrompt: "",
         promptMode: "append",

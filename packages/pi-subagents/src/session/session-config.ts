@@ -85,8 +85,6 @@ export interface SessionConfig {
   systemPrompt: string;
   /** Built-in tool name allowlist for this agent type. */
   toolNames: string[];
-  /** Resolved extensions setting: true = inherit all, false = none. */
-  extensions: boolean;
   /**
    * Resolved model instance (undefined → use parent model as passed to SDK).
    * Opaque handle — the assembler passes it through without inspection.
@@ -165,7 +163,6 @@ export function assembleSessionConfig(
 
   const effectiveCwd = options.cwd ?? ctx.cwd;
 
-  const extensions = agentConfig.extensions;
   const skills = agentConfig.skills;
 
   // Build prompt extras (memory, preloaded skills)
@@ -209,7 +206,6 @@ export function assembleSessionConfig(
     effectiveCwd,
     systemPrompt,
     toolNames,
-    extensions,
     model,
     thinkingLevel,
     noSkills,

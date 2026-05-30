@@ -55,7 +55,6 @@ export interface SessionManagerLike {
 export interface ResourceLoaderOptions {
   cwd: string;
   agentDir: string;
-  noExtensions?: boolean;
   noSkills?: boolean;
   noPromptTemplates?: boolean;
   noThemes?: boolean;
@@ -292,7 +291,7 @@ export async function runAgent(
 
   const agentDir = deps.io.getAgentDir();
 
-  // Load extensions/skills: true → load; false → don't.
+  // Children always load the parent's extensions and skills.
   // Suppress AGENTS.md/CLAUDE.md and APPEND_SYSTEM.md - upstream's
   // buildSystemPrompt() re-appends both AFTER systemPromptOverride, which
   // would defeat prompt_mode: replace. Parent context, if
@@ -301,7 +300,6 @@ export async function runAgent(
   const loader = deps.io.createResourceLoader({
     cwd: cfg.effectiveCwd,
     agentDir,
-    noExtensions: !cfg.extensions,
     noSkills: cfg.noSkills,
     noPromptTemplates: true,
     noThemes: true,
@@ -346,12 +344,10 @@ export async function runAgent(
 
   // Apply recursion guard: remove our own tools from the child's active set.
   // Runs after bindExtensions so extension-registered tools are included in the
-  // post-bind active set. Only needed when extensions are loaded (extensions: false
-  // means no extension tools were registered, so the guard is a no-op).
-  if (cfg.extensions) {
-    const filtered = filterActiveTools(session.getActiveToolNames());
-    session.setActiveToolsByName(filtered);
-  }
+  // post-bind active set. Unconditional: children always load the parent's
+  // extensions, so the guard must always strip our dispatch tools.
+  const filtered = filterActiveTools(session.getActiveToolNames());
+  session.setActiveToolsByName(filtered);
 
   options.onSessionCreated?.(session);
 

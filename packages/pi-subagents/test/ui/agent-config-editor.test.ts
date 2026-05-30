@@ -376,7 +376,6 @@ describe("buildEjectContent", () => {
     description: "Does something useful",
     systemPrompt: "You are a useful agent.",
     promptMode: "replace",
-    extensions: true,
     skills: true,
   };
 
@@ -416,11 +415,6 @@ describe("buildEjectContent", () => {
     expect(content).toContain("run_in_background: true");
   });
 
-  it("emits 'extensions: false' when extensions is false", () => {
-    const cfg: AgentConfig = { ...minimalConfig, extensions: false };
-    expect(buildEjectContent(cfg)).toContain("extensions: false");
-  });
-
   it("emits 'skills: false' when skills is false", () => {
     const cfg: AgentConfig = { ...minimalConfig, skills: false };
     expect(buildEjectContent(cfg)).toContain("skills: false");
@@ -431,9 +425,8 @@ describe("buildEjectContent", () => {
     expect(buildEjectContent(cfg)).toContain("skills: code-design");
   });
 
-  it("does not emit extension/skills fields when they are true", () => {
+  it("does not emit the skills field when it is true", () => {
     const content = buildEjectContent(minimalConfig);
-    expect(content).not.toContain("extensions:");
     expect(content).not.toContain("skills:");
   });
 });

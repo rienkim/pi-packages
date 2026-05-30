@@ -58,7 +58,6 @@ function loadFromDir(dir: string, agents: Map<string, AgentConfig>, source: "pro
       displayName: str(fm.display_name),
       description: str(fm.description) ?? name,
       builtinToolNames: csvList(fm.tools, BUILTIN_TOOL_NAMES),
-      extensions: resolveBoolExtensions(fm.extensions ?? fm.inherit_extensions),
       skills: inheritField(fm.skills ?? fm.inherit_skills),
       model: str(fm.model),
       thinking: str(fm.thinking) as ThinkingLevel | undefined,
@@ -108,23 +107,7 @@ function csvList(val: unknown, defaults: string[]): string[] {
 }
 
 /**
- * Resolve the `extensions` field to a boolean.
- * CSV/array values (legacy allowlist syntax) are coerced to `true` with a warning.
- */
-function resolveBoolExtensions(val: unknown): boolean {
-  const result = inheritField(val);
-  if (Array.isArray(result)) {
-    console.warn(
-      "[pi-subagents] extensions allowlist syntax is deprecated — treating as \"true\" (inherit all).\n" +
-        "Use \"permission:\" frontmatter in pi-permission-system for per-tool access control.",
-    );
-    return true;
-  }
-  return result;
-}
-
-/**
- * Parse an inherit field (extensions, skills).
+ * Parse an inherit field (skills).
  * omitted/true → true (inherit all); false/"none"/empty → false; csv → listed names.
  */
 function inheritField(val: unknown): true | string[] | false {

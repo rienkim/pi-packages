@@ -7,7 +7,6 @@ const DEFAULT_TEST_AGENT_CONFIG: AgentConfig = {
 	description: "A test agent",
 	systemPrompt: "You are a test agent.",
 	promptMode: "replace",
-	extensions: true,
 	skills: true,
 	isDefault: true,
 	source: "default",

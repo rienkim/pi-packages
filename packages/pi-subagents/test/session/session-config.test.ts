@@ -8,7 +8,6 @@ const mockResolveAgentConfig = vi.fn((): AgentConfig => ({
   name: "Explore",
   description: "Fast codebase exploration agent",
   builtinToolNames: ["read"],
-  extensions: false,
   skills: false,
   systemPrompt: "You are Explore.",
   promptMode: "replace",
@@ -62,7 +61,6 @@ describe("assembleSessionConfig — default agent shape", () => {
     expect(result.effectiveCwd).toBe("/tmp");
     expect(result.systemPrompt).toBe("assembled system prompt");
     expect(result.toolNames).toEqual(["read"]);
-    expect(result.extensions).toBe(false);
     expect(result.noSkills).toBe(true);
     expect(result.model).toBeUndefined();
     expect(result.thinkingLevel).toBeUndefined();
@@ -104,7 +102,6 @@ describe("assembleSessionConfig — model resolution", () => {
     mockResolveAgentConfig.mockReturnValueOnce({
       name: "Explore",
       description: "test",
-      extensions: false as const,
       skills: false as const,
       systemPrompt: "prompt",
       promptMode: "replace" as const,
@@ -128,7 +125,6 @@ describe("assembleSessionConfig — model resolution", () => {
     mockResolveAgentConfig.mockReturnValueOnce({
       name: "Explore",
       description: "test",
-      extensions: false as const,
       skills: false as const,
       systemPrompt: "prompt",
       promptMode: "replace" as const,
@@ -150,7 +146,6 @@ describe("assembleSessionConfig — model resolution", () => {
     mockResolveAgentConfig.mockReturnValueOnce({
       name: "Explore",
       description: "test",
-      extensions: false as const,
       skills: false as const,
       systemPrompt: "prompt",
       promptMode: "replace" as const,
@@ -177,7 +172,6 @@ describe("assembleSessionConfig — model resolution", () => {
     mockResolveAgentConfig.mockReturnValueOnce({
       name: "Explore",
       description: "test",
-      extensions: false as const,
       skills: false as const,
       systemPrompt: "prompt",
       promptMode: "replace" as const,
@@ -204,7 +198,6 @@ describe("assembleSessionConfig — model resolution", () => {
     mockResolveAgentConfig.mockReturnValueOnce({
       name: "Explore",
       description: "test",
-      extensions: false as const,
       skills: false as const,
       systemPrompt: "prompt",
       promptMode: "replace" as const,
@@ -252,7 +245,6 @@ describe("assembleSessionConfig — skill preloading", () => {
     mockResolveAgentConfig.mockReturnValueOnce({
       name: "general-purpose",
       description: "General",
-      extensions: true as const,
       skills: true as const,
       systemPrompt: "",
       promptMode: "append" as const,
@@ -271,7 +263,6 @@ describe("assembleSessionConfig — skill preloading", () => {
       name: "Explore",
       description: "test",
       builtinToolNames: ["read"],
-      extensions: false as const,
       skills: skillList,
       systemPrompt: "prompt",
       promptMode: "replace" as const,
@@ -296,7 +287,6 @@ describe("assembleSessionConfig — skill preloading", () => {
       name: "Explore",
       description: "test",
       builtinToolNames: ["read"],
-      extensions: false as const,
       skills: skillList,
       systemPrompt: "prompt",
       promptMode: "replace" as const,
@@ -318,7 +308,6 @@ describe("assembleSessionConfig — unknown type fallback", () => {
     mockResolveAgentConfig.mockReturnValueOnce({
       name: "general-purpose",
       description: "General-purpose",
-      extensions: true as const,
       skills: true as const,
       systemPrompt: "",
       promptMode: "append" as const,
@@ -345,7 +334,6 @@ describe("assembleSessionConfig — thinking level", () => {
     mockResolveAgentConfig.mockReturnValueOnce({
       name: "Explore",
       description: "test",
-      extensions: false as const,
       skills: false as const,
       systemPrompt: "prompt",
       promptMode: "replace" as const,
@@ -368,7 +356,6 @@ describe("assembleSessionConfig — thinking level", () => {
     mockResolveAgentConfig.mockReturnValueOnce({
       name: "Explore",
       description: "test",
-      extensions: false as const,
       skills: false as const,
       systemPrompt: "prompt",
       promptMode: "replace" as const,

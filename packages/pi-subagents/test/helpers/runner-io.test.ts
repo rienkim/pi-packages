@@ -69,7 +69,6 @@ describe("createAgentLookup", () => {
 		const config = lookup.resolveAgentConfig("Explore");
 		expect(config.name).toBe("Explore");
 		expect(config.promptMode).toBe("replace");
-		expect(config.extensions).toBe(false);
 		expect(config.skills).toBe(false);
 	});
 
@@ -85,11 +84,11 @@ describe("createAgentLookup", () => {
 	});
 
 	it("accepts a partial config override", () => {
-		const override: Partial<AgentConfig> = { name: "Custom", extensions: true };
+		const override: Partial<AgentConfig> = { name: "Custom", maxTurns: 7 };
 		const lookup = createAgentLookup(override);
 		const config = lookup.resolveAgentConfig("Custom");
 		expect(config.name).toBe("Custom");
-		expect(config.extensions).toBe(true);
+		expect(config.maxTurns).toBe(7);
 		// other defaults still present
 		expect(config.promptMode).toBe("replace");
 	});

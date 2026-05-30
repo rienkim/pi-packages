@@ -21,7 +21,6 @@ const agentConfigMock = {
     name: "test-agent",
     description: "Test agent",
     builtinToolNames: ["read"],
-    extensions: true,
     skills: false,
     systemPrompt: "You are a test agent.",
     promptMode: "replace",
@@ -82,7 +81,6 @@ beforeEach(() => {
     name: "test-agent",
     description: "Test agent",
     builtinToolNames: ["read"],
-    extensions: true,
     skills: false,
     systemPrompt: "You are a test agent.",
     promptMode: "replace",
@@ -111,8 +109,7 @@ describe("post-bind recursion guard", () => {
     expect(setOrder).toBeGreaterThan(bindOrder);
   });
 
-  it("post-bind filter includes extension tool when extensions: true", async () => {
-    agentConfigMock.current.extensions = true;
+  it("post-bind filter includes extension-registered tools", async () => {
     const session = createSessionWithExtensionToolRegistration(
       ["read"],
       ["read", "extension_tool"],
@@ -127,8 +124,7 @@ describe("post-bind recursion guard", () => {
     expect(postBindArgs).toContain("extension_tool");
   });
 
-  it("post-bind filter excludes EXCLUDED_TOOL_NAMES even when extensions: true", async () => {
-    agentConfigMock.current.extensions = true;
+  it("post-bind filter excludes EXCLUDED_TOOL_NAMES", async () => {
     const session = createSessionWithExtensionToolRegistration(
       ["read"],
       ["read", "subagent", "get_subagent_result", "steer_subagent", "external"],
@@ -146,9 +142,8 @@ describe("post-bind recursion guard", () => {
     expect(postBindArgs).not.toContain("steer_subagent");
   });
 
-  it("extensions: false skips the filter entirely (setActiveToolsByName not called)", async () => {
-    // When extensions: false, there are no extension-registered tools to guard against.
-    agentConfigMock.current.extensions = false;
+  it("runs the guard unconditionally even when no extension tools are registered", async () => {
+    // Children always load the parent's extensions, so the guard always runs.
     const session = createSessionWithExtensionToolRegistration(
       ["read"],
       ["read"],
@@ -157,6 +152,8 @@ describe("post-bind recursion guard", () => {
 
     await runAgent(STUB_SNAPSHOT, "test-agent", "go", { context: {} }, createRunnerDeps({ io, exec, registry: mockAgentLookup }));
 
-    expect(session.setActiveToolsByName).not.toHaveBeenCalled();
+    // The guard still fires post-bind and re-applies the (unchanged) tool set.
+    expect(session.setActiveToolsByName).toHaveBeenCalledTimes(1);
+    expect(session.setActiveToolsByName.mock.calls[0][0]).toEqual(["read"]);
   });
 });

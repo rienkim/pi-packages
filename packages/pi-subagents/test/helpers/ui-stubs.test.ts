@@ -94,7 +94,6 @@ describe("createTestAgentConfig", () => {
 		expect(config.description).toBe("A test agent");
 		expect(config.systemPrompt).toBe("You are a test agent.");
 		expect(config.promptMode).toBe("replace");
-		expect(config.extensions).toBe(true);
 		expect(config.skills).toBe(true);
 		expect(config.isDefault).toBe(true);
 		expect(config.source).toBe("default");

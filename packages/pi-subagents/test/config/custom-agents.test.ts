@@ -1,7 +1,7 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { BUILTIN_TOOL_NAMES } from "#src/config/agent-types";
 import { loadCustomAgents } from "#src/config/custom-agents";
 
@@ -74,7 +74,6 @@ Just a prompt.`);
     expect(agent.name).toBe("minimal");
     expect(agent.description).toBe("minimal"); // defaults to filename
     expect(agent.builtinToolNames).toEqual(BUILTIN_TOOL_NAMES); // all tools
-    expect(agent.extensions).toBe(true); // inherit all
     expect(agent.skills).toBe(true); // inherit all
     expect(agent.model).toBeUndefined();
     expect(agent.thinking).toBeUndefined();
@@ -108,23 +107,20 @@ No tools.`);
     expect(result.get("notool")!.builtinToolNames).toEqual([]);
   });
 
-  it("handles extensions: false → no extensions", () => {
-    writeAgent("noext", `---
-extensions: false
+  it("handles skills: false → no skills", () => {
+    writeAgent("noskills", `---
 skills: false
 ---
 
-No extensions.`);
+No skills.`);
 
     const result = loadCustomAgents(tmpDir);
-    const agent = result.get("noext")!;
-    expect(agent.extensions).toBe(false);
+    const agent = result.get("noskills")!;
     expect(agent.skills).toBe(false);
   });
 
-  it("coerces csv extension allowlist to true (deprecated syntax)", () => {
+  it("parses a skills csv allowlist into an array", () => {
     writeAgent("partial", `---
-extensions: web-search, mcp-server
 skills: planning, review
 ---
 
@@ -132,23 +128,7 @@ Partial access.`);
 
     const result = loadCustomAgents(tmpDir);
     const agent = result.get("partial")!;
-    // extensions csv allowlist is no longer supported — coerced to true
-    expect(agent.extensions).toBe(true);
     expect(agent.skills).toEqual(["planning", "review"]);
-  });
-
-  it("emits a deprecation warning when extensions csv allowlist is used", () => {
-    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
-    writeAgent("deprecated-ext", `---
-extensions: pi-github-tools
----
-
-Deprecated.`);
-
-    loadCustomAgents(tmpDir);
-
-    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("deprecated"));
-    warnSpy.mockRestore();
   });
 
   it("passes through unknown tool names (not filtered)", () => {
@@ -281,9 +261,8 @@ tools: read
     expect(result.get("nobody")!.systemPrompt).toBe("");
   });
 
-  it("supports inherit_extensions as alternative to extensions", () => {
+  it("supports inherit_skills as alternative to skills", () => {
     writeAgent("altkey", `---
-inherit_extensions: false
 inherit_skills: false
 ---
 
@@ -291,35 +270,30 @@ Alt keys.`);
 
     const result = loadCustomAgents(tmpDir);
     const agent = result.get("altkey")!;
-    expect(agent.extensions).toBe(false);
     expect(agent.skills).toBe(false);
   });
 
-  it("extensions: none → false", () => {
-    writeAgent("extnone", `---
-extensions: none
+  it("skills: none → false", () => {
+    writeAgent("skillnone", `---
 skills: none
 ---
 
 None.`);
 
     const result = loadCustomAgents(tmpDir);
-    const agent = result.get("extnone")!;
-    expect(agent.extensions).toBe(false);
+    const agent = result.get("skillnone")!;
     expect(agent.skills).toBe(false);
   });
 
-  it("extensions: true → true (inherit all)", () => {
-    writeAgent("exttrue", `---
-extensions: true
+  it("skills: true → true (inherit all)", () => {
+    writeAgent("skilltrue", `---
 skills: true
 ---
 
 All.`);
 
     const result = loadCustomAgents(tmpDir);
-    const agent = result.get("exttrue")!;
-    expect(agent.extensions).toBe(true);
+    const agent = result.get("skilltrue")!;
     expect(agent.skills).toBe(true);
   });
 

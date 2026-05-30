@@ -9,7 +9,6 @@ const DEFAULT_AGENT_CONFIG: AgentConfig = {
 	name: "Explore",
 	description: "Explore",
 	builtinToolNames: ["read"],
-	extensions: false,
 	skills: false,
 	systemPrompt: "You are Explore.",
 	promptMode: "replace",
